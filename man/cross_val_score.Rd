@@ -20,7 +20,7 @@ cross_val_score(
 
 \item{X}{Feature matrix or data.frame}
 
-\item{y}{Target vector}
+\item{y}{Target vector (type determines regression vs classification)}
 
 \item{cv}{Number of cross-validation folds (default: 5)}
 
@@ -38,17 +38,28 @@ Vector of cross-validation scores for each fold
 }
 \description{
 Perform k-fold cross-validation with consistent scoring metrics
-across different model types.
+across different model types. The scoring metric is automatically
+selected based on the detected task type.
 }
 \examples{
 \dontrun{
 library(glmnet)
 X <- matrix(rnorm(100), ncol = 4)
-y <- 2*X[,1] - 1.5*X[,2] + rnorm(25)
+y <- 2*X[,1] - 1.5*X[,2] + rnorm(25)  # numeric → regression
 
 mod <- Model$new(glmnet::glmnet)
-cv_scores <- cross_val_score(mod, X, y, cv = 5)
+mod$fit(X, y, alpha = 0, lambda = 0.1)
+cv_scores <- cross_val_score(mod, X, y, cv = 5)  # auto-uses RMSE
 mean(cv_scores)  # Average RMSE
+
+# Classification with accuracy scoring
+data(iris)
+X_class <- as.matrix(iris[, 1:4])
+y_class <- iris$Species  # factor → classification
+
+mod2 <- Model$new(e1071::svm)
+cv_scores2 <- cross_val_score(mod2, X_class, y_class, cv = 5)  # auto-uses accuracy
+mean(cv_scores2)  # Average accuracy
 }
 
 }
