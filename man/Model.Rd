@@ -11,19 +11,30 @@ cross-validation, model interpretability, and visualization.
 
 An R6 class that provides a unified interface for regression and classification
 models with automatic interface detection, cross-validation, and interpretability
-features.
+features. The task type (regression vs classification) is automatically detected
+from the response variable type.
 }
 \examples{
 \dontrun{
 # Regression example with glmnet
 library(glmnet)
 X <- matrix(rnorm(100), ncol = 4)
-y <- 2*X[,1] - 1.5*X[,2] + rnorm(25)
+y <- 2*X[,1] - 1.5*X[,2] + rnorm(25)  # numeric → regression
 
-mod <- Model$new(glmnet::glmnet, task = "regression")
+mod <- Model$new(glmnet::glmnet)
 mod$fit(X, y, alpha = 0, lambda = 0.1)
 mod$summary()
 predictions <- mod$predict(X)
+
+# Classification example  
+data(iris)
+iris_binary <- iris[iris$Species \%in\% c("setosa", "versicolor"), ]
+X_class <- as.matrix(iris_binary[, 1:4])
+y_class <- iris_binary$Species  # factor → classification
+
+mod2 <- Model$new(e1071::svm)
+mod2$fit(X_class, y_class, kernel = "radial")
+mod2$summary()
 
 # Cross-validation
 cv_scores <- cross_val_score(mod, X, y, cv = 5)
@@ -40,7 +51,7 @@ Your Name
 
 \item{\code{fitted}}{The fitted model object}
 
-\item{\code{task}}{Type of task: "regression" or "classification"}
+\item{\code{task}}{Type of task: "regression" or "classification" (automatically detected)}
 
 \item{\code{X_train}}{Training features matrix}
 
@@ -67,15 +78,13 @@ Your Name
 \subsection{Method \code{new()}}{
 Initialize a new Model
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Model$new(model_fn, task = "regression")}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{Model$new(model_fn)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
 \item{\code{model_fn}}{A modeling function (e.g., glmnet, randomForest, svm)}
-
-\item{\code{task}}{Task type: "regression" or "classification"}
 }
 \if{html}{\out{</div>}}
 }
@@ -88,6 +97,10 @@ A new Model object
 \if{latex}{\out{\hypertarget{method-Model-fit}{}}}
 \subsection{Method \code{fit()}}{
 Fit the model to training data
+
+Automatically detects task type (regression vs classification) based on
+the type of the response variable y. Numeric y → regression,
+factor y → classification.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Model$fit(X, y, ...)}\if{html}{\out{</div>}}
 }
@@ -97,7 +110,7 @@ Fit the model to training data
 \describe{
 \item{\code{X}}{Feature matrix or data.frame}
 
-\item{\code{y}}{Target vector}
+\item{\code{y}}{Target vector (numeric for regression, factor for classification)}
 
 \item{\code{...}}{Additional arguments passed to the model function}
 }
@@ -113,7 +126,7 @@ self (invisible) for method chaining
 \subsection{Method \code{predict()}}{
 Generate predictions from fitted model
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Model$predict(X, type = "response", ...)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{Model$predict(X, type = NULL, ...)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{

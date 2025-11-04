@@ -17,11 +17,12 @@ NULL
 #' @description
 #' An R6 class that provides a unified interface for regression and classification
 #' models with automatic interface detection, cross-validation, and interpretability
-#' features.
+#' features. The task type (regression vs classification) is automatically detected
+#' from the response variable type.
 #' 
 #' @field model_fn The modeling function (e.g., glmnet::glmnet, randomForest::randomForest)
 #' @field fitted The fitted model object
-#' @field task Type of task: "regression" or "classification"  
+#' @field task Type of task: "regression" or "classification" (automatically detected)
 #' @field X_train Training features matrix
 #' @field y_train Training target vector
 #' 
@@ -30,12 +31,22 @@ NULL
 #' # Regression example with glmnet
 #' library(glmnet)
 #' X <- matrix(rnorm(100), ncol = 4)
-#' y <- 2*X[,1] - 1.5*X[,2] + rnorm(25)
+#' y <- 2*X[,1] - 1.5*X[,2] + rnorm(25)  # numeric → regression
 #' 
-#' mod <- Model$new(glmnet::glmnet, task = "regression")
+#' mod <- Model$new(glmnet::glmnet)
 #' mod$fit(X, y, alpha = 0, lambda = 0.1)
 #' mod$summary()
 #' predictions <- mod$predict(X)
+#' 
+#' # Classification example  
+#' data(iris)
+#' iris_binary <- iris[iris$Species %in% c("setosa", "versicolor"), ]
+#' X_class <- as.matrix(iris_binary[, 1:4])
+#' y_class <- iris_binary$Species  # factor → classification
+#' 
+#' mod2 <- Model$new(e1071::svm)
+#' mod2$fit(X_class, y_class, kernel = "radial")
+#' mod2$summary()
 #' 
 #' # Cross-validation
 #' cv_scores <- cross_val_score(mod, X, y, cv = 5)
@@ -47,24 +58,26 @@ Model <- R6::R6Class(
   public = list(
     model_fn = NULL,
     fitted   = NULL,
-    task     = "regression",
+    task     = NULL,  # Will be set automatically in fit()
     X_train  = NULL,
     y_train  = NULL,
     
     #' @description Initialize a new Model
     #' @param model_fn A modeling function (e.g., glmnet, randomForest, svm)
-    #' @param task Task type: "regression" or "classification"
     #' @return A new Model object
-    initialize = function(model_fn, task = "regression") {
+    initialize = function(model_fn) {
       stopifnot(is.function(model_fn))
-      stopifnot(task %in% c("regression", "classification"))
       self$model_fn <- model_fn
-      self$task <- task
     },
     
     #' @description Fit the model to training data
+    #' 
+    #' Automatically detects task type (regression vs classification) based on
+    #' the type of the response variable y. Numeric y → regression, 
+    #' factor y → classification.
+    #' 
     #' @param X Feature matrix or data.frame
-    #' @param y Target vector
+    #' @param y Target vector (numeric for regression, factor for classification)
     #' @param ... Additional arguments passed to the model function
     #' @return self (invisible) for method chaining
     fit = function(X, y, ...) {
@@ -74,9 +87,14 @@ Model <- R6::R6Class(
       self$X_train <- X
       self$y_train <- y
       
-      if (self$task == "classification") {
+      # Auto-detect task type based on y
+      if (is.factor(y)) {
+        self$task <- "classification"
+        # Ensure y is factor for classification
         y <- as.factor(y)
       } else {
+        self$task <- "regression"
+        # Ensure y is numeric for regression
         y <- as.numeric(y)
       }
       
@@ -107,9 +125,14 @@ Model <- R6::R6Class(
     #' @param type Type of prediction ("response", "class", "probabilities")
     #' @param ... Additional arguments passed to predict function
     #' @return Vector of predictions
-    predict = function(X, type = "response", ...) {
+    predict = function(X, type = NULL, ...) {
       if (is.null(self$fitted)) stop("Model not fitted.")
       X <- as.matrix(X)
+      
+      # Set default type based on task
+      if (is.null(type)) {
+        type <- ifelse(self$task == "classification", "response", "response")
+      }
       
       # 1. Try newdata (formula models)
       df <- data.frame(X)
@@ -131,6 +154,15 @@ Model <- R6::R6Class(
       # Clean output
       if (is.matrix(pred) && ncol(pred) == 1) pred <- drop(pred)
       if (is.list(pred)) pred <- unlist(pred)
+      
+      # For classification, ensure factors are returned as original levels if possible
+      if (self$task == "classification" && type == "class" && is.factor(self$y_train)) {
+        if (is.numeric(pred)) {
+          # Convert numeric predictions back to factor levels
+          pred <- factor(levels(self$y_train)[pred + 1], levels = levels(self$y_train))
+        }
+      }
+      
       pred
     },
     
@@ -138,15 +170,17 @@ Model <- R6::R6Class(
     #' @return self (invisible) for method chaining
     print = function() {
       cat("Model Object\n")
-      cat("----------------------\n")
-      cat("Task:", self$task, "\n")
+      cat("------------\n")
       cat("Model function:", deparse(substitute(self$model_fn))[1], "\n")
       cat("Fitted:", !is.null(self$fitted), "\n")
       if (!is.null(self$fitted)) {
+        cat("Task:", self$task, "\n")
         cat("Training samples:", nrow(self$X_train), "\n")
         cat("Features:", ncol(self$X_train), "\n")
         if (self$task == "classification") {
-          cat("Classes:", length(unique(self$y_train)), "\n")
+          cat("Classes:", paste(levels(self$y_train), collapse = ", "), "\n")
+          cat("Class distribution:\n")
+          print(table(self$y_train))
         }
       }
       invisible(self)
@@ -275,7 +309,7 @@ Model <- R6::R6Class(
     #' 
     #' @return A new Model object with same configuration
     clone_model = function() {
-      Model$new(self$model_fn, task = self$task)
+      Model$new(self$model_fn)
     }
   )
 )
@@ -283,11 +317,12 @@ Model <- R6::R6Class(
 #' Cross-Validation for Model Objects
 #' 
 #' Perform k-fold cross-validation with consistent scoring metrics
-#' across different model types.
+#' across different model types. The scoring metric is automatically
+#' selected based on the detected task type.
 #' 
 #' @param model A Model object
 #' @param X Feature matrix or data.frame
-#' @param y Target vector
+#' @param y Target vector (type determines regression vs classification)
 #' @param cv Number of cross-validation folds (default: 5)
 #' @param scoring Scoring metric: "rmse", "mae", "accuracy", or "f1" 
 #'               (default: auto-detected based on task)
@@ -301,11 +336,21 @@ Model <- R6::R6Class(
 #' \dontrun{
 #' library(glmnet)
 #' X <- matrix(rnorm(100), ncol = 4)
-#' y <- 2*X[,1] - 1.5*X[,2] + rnorm(25)
+#' y <- 2*X[,1] - 1.5*X[,2] + rnorm(25)  # numeric → regression
 #' 
 #' mod <- Model$new(glmnet::glmnet)
-#' cv_scores <- cross_val_score(mod, X, y, cv = 5)
+#' mod$fit(X, y, alpha = 0, lambda = 0.1)
+#' cv_scores <- cross_val_score(mod, X, y, cv = 5)  # auto-uses RMSE
 #' mean(cv_scores)  # Average RMSE
+#' 
+#' # Classification with accuracy scoring
+#' data(iris)
+#' X_class <- as.matrix(iris[, 1:4])
+#' y_class <- iris$Species  # factor → classification
+#' 
+#' mod2 <- Model$new(e1071::svm)
+#' cv_scores2 <- cross_val_score(mod2, X_class, y_class, cv = 5)  # auto-uses accuracy
+#' mean(cv_scores2)  # Average accuracy
 #' }
 #' 
 #' @export
@@ -316,15 +361,12 @@ cross_val_score <- function(model, X, y, cv = 5, scoring = NULL,
   folds <- split(sample(seq_len(n)), rep(1:cv, length.out = n))
   scores <- numeric(cv)
   
+  # Auto-detect task based on y
+  task_type <- ifelse(is.factor(y), "classification", "regression")
+  
   # Auto-detect scoring metric if not provided
   if (is.null(scoring)) {
-    scoring <- ifelse(model$task == "regression", "rmse", "accuracy")
-  }
-  
-  if (model$task == "classification") {
-    y <- as.factor(y)
-  } else {
-    y <- as.numeric(y)
+    scoring <- ifelse(task_type == "regression", "rmse", "accuracy")
   }
   
   if (show_progress)
@@ -347,13 +389,29 @@ cross_val_score <- function(model, X, y, cv = 5, scoring = NULL,
     } else if (scoring == "accuracy") {
       scores[i] <- mean(pred == true, na.rm = TRUE)
     } else if (scoring == "f1") {
-      # Binary F1 score
-      tp <- sum(pred == 1 & true == 1)
-      fp <- sum(pred == 1 & true == 0)
-      fn <- sum(pred == 0 & true == 1)
-      precision <- tp / (tp + fp + 1e-10)
-      recall <- tp / (tp + fn + 1e-10)
-      scores[i] <- 2 * precision * recall / (precision + recall + 1e-10)
+      # Binary F1 score - handle multi-class later
+      if (is.factor(true)) {
+        # For binary classification, assume first two levels
+        if (nlevels(true) == 2) {
+          tp <- sum(pred == levels(true)[2] & true == levels(true)[2])
+          fp <- sum(pred == levels(true)[2] & true == levels(true)[1])
+          fn <- sum(pred == levels(true)[1] & true == levels(true)[2])
+          precision <- tp / (tp + fp + 1e-10)
+          recall <- tp / (tp + fn + 1e-10)
+          scores[i] <- 2 * precision * recall / (precision + recall + 1e-10)
+        } else {
+          warning("F1 score currently only supports binary classification. Using accuracy instead.")
+          scores[i] <- mean(pred == true, na.rm = TRUE)
+        }
+      } else {
+        # For numeric binary classification (0/1)
+        tp <- sum(pred == 1 & true == 1)
+        fp <- sum(pred == 1 & true == 0)
+        fn <- sum(pred == 0 & true == 1)
+        precision <- tp / (tp + fp + 1e-10)
+        recall <- tp / (tp + fn + 1e-10)
+        scores[i] <- 2 * precision * recall / (precision + recall + 1e-10)
+      }
     }
     
     if (show_progress)
@@ -365,38 +423,3 @@ cross_val_score <- function(model, X, y, cv = 5, scoring = NULL,
   
   scores
 }
-
-# ============================================================
-# EXAMPLES (not exported)
-# ============================================================
-
-#' @examples
-#' \dontrun{
-#' library(glmnet)
-#' library(randomForest)
-#' library(e1071)
-#' 
-#' # Regression examples
-#' set.seed(123)
-#' X <- matrix(rnorm(200), ncol = 4)
-#' colnames(X) <- paste0("Feature_", 1:4)
-#' y <- 2*X[,1] - 1.5*X[,2] + rnorm(50)
-#' 
-#' # glmnet regression
-#' mod1 <- Model$new(glmnet::glmnet, task = "regression")
-#' mod1$fit(X, y, alpha = 0, lambda = 0.1)
-#' mod1$summary()
-#' cv1 <- cross_val_score(mod1, X, y, cv = 3)
-#' 
-#' # Classification example
-#' data(iris)
-#' iris_binary <- iris[iris$Species %in% c("setosa", "versicolor"), ]
-#' X_class <- as.matrix(iris_binary[, 1:4])
-#' y_class <- ifelse(iris_binary$Species == "setosa", 0, 1)
-#' 
-#' mod2 <- Model$new(e1071::svm, task = "classification")
-#' mod2$fit(X_class, y_class, kernel = "radial")
-#' mod2$summary()
-#' cv2 <- cross_val_score(mod2, X_class, y_class, cv = 3, scoring = "accuracy")
-#' }
-NULL
