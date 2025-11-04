@@ -2,7 +2,7 @@ Package: unifiedml
 Type: Package
 Title: Unified Interface for Machine Learning Models in R
 Version: 0.1.0
-Date: 2024-12-19
+Date: 2025-11-04
 Author: T. Moudiki
 Maintainer: T. Moudiki <thierry.moudiki@gmail.com>
 Description: Provides a unified R6-based interface for various machine learning 
@@ -14,13 +14,10 @@ License: BSD_3_clause Clear + file LICENSE
 URL: https://github.com/Techtonique/unifiedml
 BugReports: https://github.com/Techtonique/unifiedml/issues
 Depends: 
-    R (>= 3.5.0)
+    R (>= 3.5.0),
+    R6
 Imports: 
-    Rcpp (>= 1.1.0),
-    R6,
-    stats,
-    utils,
-    graphics
+    Rcpp (>= 1.1.0)
 Suggests: 
     testthat (>= 3.0.0),
     knitr,
