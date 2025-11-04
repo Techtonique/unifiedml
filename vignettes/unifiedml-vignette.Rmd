@@ -1,0 +1,77 @@
+---
+title: "Introduction to R package `unifiedml`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Introduction to R package `unifiedml`}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r}
+# ============================================================
+# EXAMPLES
+# ============================================================
+
+library(unifiedml) # this package
+library(glmnet)
+library(randomForest)
+library(e1071)
+
+# ------------------------------------------------------------
+# REGRESSION EXAMPLES
+# ------------------------------------------------------------
+
+cat("\n=== REGRESSION EXAMPLES ===\n\n")
+
+# Example 1: Synthetic data
+set.seed(123)
+X <- matrix(rnorm(200), ncol = 4)
+colnames(X) <- paste0("Feature_", 1:4)
+y <- 2*X[,1] - 1.5*X[,2] + rnorm(50)
+
+# glmnet regression
+cat("1. Ridge Regression (glmnet)\n")
+mod1 <- Model$new(glmnet::glmnet, task = "regression")
+mod1$fit(X, y, alpha = 0, lambda = 0.1)
+mod1$print()
+cat("\nPredictions:\n")
+print(head(mod1$predict(X)))
+cat("\n")
+mod1$summary()
+mod1$plot(feature = 1)
+(cv1 <- cross_val_score(mod1, X, y, cv = 3))
+cat("\nMean RMSE:", mean(cv1), "\n\n")
+
+# randomForest regression
+cat("\n2. Random Forest Regression\n")
+mod2 <- Model$new(randomForest::randomForest, task = "regression")
+mod2$fit(X, y, ntree = 50)
+mod2$print()
+cat("\n")
+mod2$summary(h = 0.01)
+
+# ------------------------------------------------------------
+# CLASSIFICATION EXAMPLES
+# ------------------------------------------------------------
+
+cat("\n\n=== CLASSIFICATION EXAMPLES ===\n\n")
+
+# Example: Iris dataset (binary classification)
+data(iris)
+# Use only 2 classes for binary classification
+iris_binary <- iris[iris$Species %in% c("setosa", "versicolor"), ]
+X_class <- as.matrix(iris_binary[, 1:4])
+y_class <- ifelse(iris_binary$Species == "setosa", 0, 1)
+
+# SVM classification
+
+# Random Forest classification
+cat("\n4. Random Forest Classification\n")
+mod4 <- Model$new(randomForest::randomForest, task = "classification")
+mod4$fit(X_class, y_class, ntree = 50)
+mod4$print()
+(cv4 <- cross_val_score(mod4, X_class, y_class, cv = 3, scoring = "accuracy"))
+cat("\nMean Accuracy:", mean(cv4), "\n")
+```
+
+
