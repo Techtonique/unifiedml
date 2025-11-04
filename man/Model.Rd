@@ -179,8 +179,7 @@ for each feature, providing model-agnostic interpretability.
 \if{html}{\out{</div>}}
 }
 \subsection{Details}{
-The method computes numerical derivatives using central differences:
-f'(x) ≈ \link{f(x+h) - f(x-h)} / (2h)
+The method computes numerical derivatives using central differences.
 
 Statistical significance is assessed using t-tests on the derivative
 estimates across samples.

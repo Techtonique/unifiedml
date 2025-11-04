@@ -112,7 +112,15 @@ Model <- R6::R6Class(
         self$fitted <- tryCatch(
           do.call(self$model_fn, fit_args),
           error = function(e) {
-            stop("Model failed with both formula and matrix interfaces.")
+            #misc::debug_print(X)
+            #misc::debug_print(y)
+            fit_args <- c(list(x = as.matrix(X), y = as.integer(y)), list(...))
+            self$fitted <- tryCatch(do.call(self$model_fn, fit_args),
+                                    error = function(e) {
+                                      print(e)
+                                      stop("Model fit failed.")
+                                    }
+                                    )
           }
         )
       }
@@ -196,8 +204,7 @@ Model <- R6::R6Class(
     #' @return A data.frame with derivative statistics (invisible)
     #' 
     #' @details
-    #' The method computes numerical derivatives using central differences:
-    #' f'(x) ≈ [f(x+h) - f(x-h)] / (2h)
+    #' The method computes numerical derivatives using central differences.
     #' 
     #' Statistical significance is assessed using t-tests on the derivative
     #' estimates across samples.

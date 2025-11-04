@@ -7,7 +7,7 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r}
+```{r fig.width=7}
 library(unifiedml) # this package
 library(glmnet)
 library(randomForest)
@@ -34,7 +34,7 @@ print(head(mod1$predict(X)))
 cat("\n")
 mod1$summary()
 mod1$plot(feature = 1)
-(cv1 <- cross_val_score(mod1, X, y, cv = 3))  # Auto-uses RMSE
+(cv1 <- cross_val_score(mod1, X, y, cv = 5L))  # Auto-uses RMSE
 cat("\nMean RMSE:", mean(cv1), "\n\n")
 
 # randomForest regression
@@ -68,73 +68,16 @@ y_multi <- iris$Species  # factor with 3 levels → multi-class classification
 mod4 <- Model$new(randomForest::randomForest)  # No task parameter!
 mod4$fit(X_multi, y_multi, ntree = 50)
 mod4$print()
-(cv4 <- cross_val_score(mod4, X_multi, y_multi, cv = 3))  # Auto-uses accuracy
+(cv4 <- cross_val_score(mod4, X_multi, y_multi, cv = 5L))  # Auto-uses accuracy
 cat("\nMean Accuracy:", mean(cv4), "\n")
 
-# Classification with numeric binary response (0/1)
-cat("5. Binary Classification with Numeric Response (0/1)\n")
-X_numeric_binary <- as.matrix(iris_binary[, 1:4])
-y_numeric_binary <- ifelse(iris_binary$Species == "setosa", 0, 1)  # numeric 0/1 → regression!
 
-mod5 <- Model$new(e1071::svm)
-mod5$fit(X_numeric_binary, y_numeric_binary, kernel = "linear")
-mod5$print()  # Will show "regression" since y is numeric
-cat("\nNote: Numeric 0/1 response is treated as regression. Use factors for classification.\n")
-
-# Force classification by converting to factor
-cat("6. Binary Classification with Explicit Factor Conversion\n")
-y_factor_binary <- factor(ifelse(iris_binary$Species == "setosa", "setosa", "versicolor"))
-mod6 <- Model$new(e1071::svm)
-mod6$fit(X_numeric_binary, y_factor_binary, kernel = "linear")
-mod6$print()  # Will show "classification" since y is factor
-(cv6 <- cross_val_score(mod6, X_numeric_binary, y_factor_binary, cv = 3, scoring = "accuracy"))
-cat("\nMean Accuracy:", mean(cv6), "\n")
-
-# ------------------------------------------------------------
-# CROSS-VALIDATION WITH DIFFERENT SCORING METRICS
-# ------------------------------------------------------------
-
-cat("\n\n=== CROSS-VALIDATION COMPARISON ===\n\n")
-
-# Regression with different scoring
-cat("Regression Scoring Metrics:\n")
-cv_rmse <- cross_val_score(mod1, X, y, cv = 3, scoring = "rmse")
-cv_mae <- cross_val_score(mod1, X, y, cv = 3, scoring = "mae")
-cat("RMSE:", mean(cv_rmse), " MAE:", mean(cv_mae), "\n")
-
-# Classification with different scoring
-cat("Classification Scoring Metrics:\n")
-cv_accuracy <- cross_val_score(mod3, X_binary, y_binary, cv = 3, scoring = "accuracy")
-cv_f1 <- cross_val_score(mod3, X_binary, y_binary, cv = 3, scoring = "f1")
-cat("Accuracy:", mean(cv_accuracy), " F1:", mean(cv_f1), "\n")
-
-# ------------------------------------------------------------
-# MODEL COMPARISON BENCHMARK
-# ------------------------------------------------------------
-
-cat("\n\n=== MODEL COMPARISON BENCHMARK ===\n\n")
-
-# Compare multiple models on the same data
-models <- list(
-  glmnet = Model$new(glmnet::glmnet),
-  rf = Model$new(randomForest::randomForest),
-  svm = Model$new(e1071::svm)
-)
-
-# Benchmark on binary classification
-benchmark_results <- list()
-for (name in names(models)) {
-  cat("Testing", name, "...\n")
-  mod <- models[[name]]
-  mod$fit(X_binary, y_binary)
-  cv_scores <- cross_val_score(mod, X_binary, y_binary, cv = 3, scoring = "accuracy")
-  benchmark_results[[name]] <- mean(cv_scores)
-}
-
-cat("\nBenchmark Results (Accuracy):\n")
-for (name in names(benchmark_results)) {
-  cat(name, ":", round(benchmark_results[[name]], 4), "\n")
-}
+y_multi_numeric <- as.numeric(y_multi)
+mod4 <- Model$new(glmnet::glmnet)  # No task parameter!
+mod4$fit(X_multi, y_multi_numeric, family="multinomial")
+mod4$print()
+(cv4 <- cross_val_score(mod4, X_multi, y_multi_numeric, cv = 5L))  # Auto-uses accuracy
+cat("\nMean Accuracy:", mean(cv4), "\n")
 ```
 
 

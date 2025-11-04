@@ -29,7 +29,8 @@ Suggests:
     randomForest,
     e1071,
     covr,
-    spelling
+    spelling,
+    MASS
 VignetteBuilder: knitr
 Encoding: UTF-8
 LazyData: true
