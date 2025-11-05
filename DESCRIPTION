@@ -10,10 +10,10 @@ Authors@R:
 Maintainer: T. Moudiki <thierry.moudiki@gmail.com>
 Description: Provides a unified R6-based interface for various machine learning 
     models with automatic interface detection, consistent cross-validation, 
-    model interpretability via numerical derivatives, and visualization. 
+    model interpretations via numerical derivatives, and visualization. 
     Supports both regression and classification tasks with any model function 
     that follows R's standard modeling conventions (formula or matrix interface).
-License: BSD_3_clause + file LICENSE
+License: MIT + file LICENSE
 URL: https://github.com/Techtonique/unifiedml
 BugReports: https://github.com/Techtonique/unifiedml/issues
 Depends: 
