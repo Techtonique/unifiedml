@@ -73,8 +73,8 @@ Model <- R6::R6Class(
     #' @description Fit the model to training data
     #' 
     #' Automatically detects task type (regression vs classification) based on
-    #' the type of the response variable y. Numeric y → regression, 
-    #' factor y → classification.
+    #' the type of the response variable y. Numeric y -> regression, 
+    #' factor y -> classification.
     #' 
     #' @param X Feature matrix or data.frame
     #' @param y Target vector (numeric for regression, factor for classification)
@@ -428,5 +428,5 @@ cross_val_score <- function(model, X, y, cv = 5, scoring = NULL,
   if (show_progress)
     close(pb)
   
-  scores
+  return(scores)
 }

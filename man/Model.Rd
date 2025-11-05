@@ -99,8 +99,8 @@ A new Model object
 Fit the model to training data
 
 Automatically detects task type (regression vs classification) based on
-the type of the response variable y. Numeric y → regression,
-factor y → classification.
+the type of the response variable y. Numeric y -> regression,
+factor y -> classification.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Model$fit(X, y, ...)}\if{html}{\out{</div>}}
 }
