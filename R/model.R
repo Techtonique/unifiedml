@@ -31,7 +31,7 @@ NULL
 #' # Regression example with glmnet
 #' library(glmnet)
 #' X <- matrix(rnorm(100), ncol = 4)
-#' y <- 2*X[,1] - 1.5*X[,2] + rnorm(25)  # numeric → regression
+#' y <- 2*X[,1] - 1.5*X[,2] + rnorm(25)  # numeric -> regression
 #' 
 #' mod <- Model$new(glmnet::glmnet)
 #' mod$fit(X, y, alpha = 0, lambda = 0.1)
@@ -42,7 +42,7 @@ NULL
 #' data(iris)
 #' iris_binary <- iris[iris$Species %in% c("setosa", "versicolor"), ]
 #' X_class <- as.matrix(iris_binary[, 1:4])
-#' y_class <- iris_binary$Species  # factor → classification
+#' y_class <- iris_binary$Species  # factor -> classification
 #' 
 #' mod2 <- Model$new(e1071::svm)
 #' mod2$fit(X_class, y_class, kernel = "radial")
@@ -106,7 +106,7 @@ Model <- R6::R6Class(
         error = function(e) NULL
       )
       
-      # 2. If failed → try matrix interface
+      # 2. If failed -> try matrix interface
       if (is.null(self$fitted)) {
         fit_args <- c(list(x = X, y = y), list(...))
         self$fitted <- tryCatch(
@@ -343,7 +343,7 @@ Model <- R6::R6Class(
 #' \dontrun{
 #' library(glmnet)
 #' X <- matrix(rnorm(100), ncol = 4)
-#' y <- 2*X[,1] - 1.5*X[,2] + rnorm(25)  # numeric → regression
+#' y <- 2*X[,1] - 1.5*X[,2] + rnorm(25)  # numeric -> regression
 #' 
 #' mod <- Model$new(glmnet::glmnet)
 #' mod$fit(X, y, alpha = 0, lambda = 0.1)
@@ -353,7 +353,7 @@ Model <- R6::R6Class(
 #' # Classification with accuracy scoring
 #' data(iris)
 #' X_class <- as.matrix(iris[, 1:4])
-#' y_class <- iris$Species  # factor → classification
+#' y_class <- iris$Species  # factor -> classification
 #' 
 #' mod2 <- Model$new(e1071::svm)
 #' cv_scores2 <- cross_val_score(mod2, X_class, y_class, cv = 5)  # auto-uses accuracy
