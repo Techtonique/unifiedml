@@ -45,7 +45,7 @@ selected based on the detected task type.
 \dontrun{
 library(glmnet)
 X <- matrix(rnorm(100), ncol = 4)
-y <- 2*X[,1] - 1.5*X[,2] + rnorm(25)  # numeric → regression
+y <- 2*X[,1] - 1.5*X[,2] + rnorm(25)  # numeric -> regression
 
 mod <- Model$new(glmnet::glmnet)
 mod$fit(X, y, alpha = 0, lambda = 0.1)
@@ -55,7 +55,7 @@ mean(cv_scores)  # Average RMSE
 # Classification with accuracy scoring
 data(iris)
 X_class <- as.matrix(iris[, 1:4])
-y_class <- iris$Species  # factor → classification
+y_class <- iris$Species  # factor -> classification
 
 mod2 <- Model$new(e1071::svm)
 cv_scores2 <- cross_val_score(mod2, X_class, y_class, cv = 5)  # auto-uses accuracy

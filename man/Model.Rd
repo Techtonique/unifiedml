@@ -19,7 +19,7 @@ from the response variable type.
 # Regression example with glmnet
 library(glmnet)
 X <- matrix(rnorm(100), ncol = 4)
-y <- 2*X[,1] - 1.5*X[,2] + rnorm(25)  # numeric → regression
+y <- 2*X[,1] - 1.5*X[,2] + rnorm(25)  # numeric -> regression
 
 mod <- Model$new(glmnet::glmnet)
 mod$fit(X, y, alpha = 0, lambda = 0.1)
@@ -30,7 +30,7 @@ predictions <- mod$predict(X)
 data(iris)
 iris_binary <- iris[iris$Species \%in\% c("setosa", "versicolor"), ]
 X_class <- as.matrix(iris_binary[, 1:4])
-y_class <- iris_binary$Species  # factor → classification
+y_class <- iris_binary$Species  # factor -> classification
 
 mod2 <- Model$new(e1071::svm)
 mod2$fit(X_class, y_class, kernel = "radial")
