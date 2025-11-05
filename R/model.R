@@ -120,7 +120,7 @@ Model <- R6::R6Class(
                                       print(e)
                                       stop("Model fit failed.")
                                     }
-                                    )
+            )
           }
         )
       }
@@ -376,57 +376,145 @@ cross_val_score <- function(model, X, y, cv = 5, scoring = NULL,
     scoring <- ifelse(task_type == "regression", "rmse", "accuracy")
   }
   
-  if (show_progress)
-    pb <- utils::txtProgressBar(max = cv, style = 3)
-  
-  for (i in seq_len(cv)) {
-    val_idx   <- folds[[i]]
-    train_idx <- setdiff(seq_len(n), val_idx)
+  if (is.null(cl))
+  {
+    if (show_progress)
+      pb <- utils::txtProgressBar(max = cv, style = 3)
     
-    m <- model$clone_model()
-    m$fit(X = X[train_idx, , drop = FALSE], y = y[train_idx], ...)
-    
-    pred <- m$predict(X = X[val_idx, , drop = FALSE], ...)
-    true <- y[val_idx]
-    
-    if (scoring == "rmse") {
-      scores[i] <- sqrt(mean((true - pred)^2, na.rm = TRUE))
-    } else if (scoring == "mae") {
-      scores[i] <- mean(abs(true - pred), na.rm = TRUE)
-    } else if (scoring == "accuracy") {
-      scores[i] <- mean(pred == true, na.rm = TRUE)
-    } else if (scoring == "f1") {
-      # Binary F1 score - handle multi-class later
-      if (is.factor(true)) {
-        # For binary classification, assume first two levels
-        if (nlevels(true) == 2) {
-          tp <- sum(pred == levels(true)[2] & true == levels(true)[2])
-          fp <- sum(pred == levels(true)[2] & true == levels(true)[1])
-          fn <- sum(pred == levels(true)[1] & true == levels(true)[2])
+    for (i in seq_len(cv)) {
+      val_idx   <- folds[[i]]
+      train_idx <- setdiff(seq_len(n), val_idx)
+      
+      m <- model$clone_model()
+      m$fit(X = X[train_idx, , drop = FALSE], y = y[train_idx], ...)
+      
+      pred <- m$predict(X = X[val_idx, , drop = FALSE], ...)
+      true <- y[val_idx]
+      
+      if (scoring == "rmse") {
+        scores[i] <- sqrt(mean((true - pred)^2, na.rm = TRUE))
+      } else if (scoring == "mae") {
+        scores[i] <- mean(abs(true - pred), na.rm = TRUE)
+      } else if (scoring == "accuracy") {
+        scores[i] <- mean(pred == true, na.rm = TRUE)
+      } else if (scoring == "f1") {
+        # Binary F1 score - handle multi-class later
+        if (is.factor(true)) {
+          # For binary classification, assume first two levels
+          if (nlevels(true) == 2) {
+            tp <- sum(pred == levels(true)[2] & true == levels(true)[2])
+            fp <- sum(pred == levels(true)[2] & true == levels(true)[1])
+            fn <- sum(pred == levels(true)[1] & true == levels(true)[2])
+            precision <- tp / (tp + fp + 1e-10)
+            recall <- tp / (tp + fn + 1e-10)
+            scores[i] <- 2 * precision * recall / (precision + recall + 1e-10)
+          } else {
+            warning("F1 score currently only supports binary classification. Using accuracy instead.")
+            scores[i] <- mean(pred == true, na.rm = TRUE)
+          }
+        } else {
+          # For numeric binary classification (0/1)
+          tp <- sum(pred == 1 & true == 1)
+          fp <- sum(pred == 1 & true == 0)
+          fn <- sum(pred == 0 & true == 1)
           precision <- tp / (tp + fp + 1e-10)
           recall <- tp / (tp + fn + 1e-10)
           scores[i] <- 2 * precision * recall / (precision + recall + 1e-10)
-        } else {
-          warning("F1 score currently only supports binary classification. Using accuracy instead.")
-          scores[i] <- mean(pred == true, na.rm = TRUE)
         }
-      } else {
-        # For numeric binary classification (0/1)
-        tp <- sum(pred == 1 & true == 1)
-        fp <- sum(pred == 1 & true == 0)
-        fn <- sum(pred == 0 & true == 1)
-        precision <- tp / (tp + fp + 1e-10)
-        recall <- tp / (tp + fn + 1e-10)
-        scores[i] <- 2 * precision * recall / (precision + recall + 1e-10)
       }
+      
+      if (show_progress)
+        utils::setTxtProgressBar(pb, i)
     }
     
     if (show_progress)
-      utils::setTxtProgressBar(pb, i)
+      close(pb)
+    
+    return(scores)
+    
+  } else {
+    cl_SOCK <- parallel::makeCluster(cl, type = "SOCK")
+    doParallel::registerDoParallel(cl_SOCK)
+    `%op%` <-  foreach::`%dopar%`
+    
+    if (show_progress)
+    {
+      pb <- txtProgressBar(min = 0,
+                           max = cv,
+                           style = 3)
+      progress <- function(n)
+        utils::setTxtProgressBar(pb, n)
+      opts <- list(progress = progress)
+      
+    } else {
+      
+      opts <- NULL
+      
+    }
+    
+    # KEY FIX: Store the result and use .combine to collect scores
+    scores <- foreach::foreach(i = seq_len(cv), 
+                               .packages = c("unifiedml"),
+                               .combine = 'c',  # ADDED: Combine results into vector
+                               .errorhandling = "stop",
+                               .options.snow = opts, 
+                               .verbose = FALSE) %op% {  # Changed to FALSE for cleaner output
+                                 
+                                 val_idx   <- folds[[i]]
+                                 train_idx <- setdiff(seq_len(n), val_idx)
+                                 
+                                 m <- model$clone_model()
+                                 m$fit(X = X[train_idx, , drop = FALSE], y = y[train_idx], ...)
+                                 
+                                 pred <- m$predict(X = X[val_idx, , drop = FALSE], ...)
+                                 true <- y[val_idx]
+                                 
+                                 score <- NA  # Initialize score
+                                 
+                                 if (scoring == "rmse") {
+                                   score <- sqrt(mean((true - pred)^2, na.rm = TRUE))
+                                 } else if (scoring == "mae") {
+                                   score <- mean(abs(true - pred), na.rm = TRUE)
+                                 } else if (scoring == "accuracy") {
+                                   score <- mean(pred == true, na.rm = TRUE)
+                                 } else if (scoring == "f1") {
+                                   # Binary F1 score - handle multi-class later
+                                   if (is.factor(true)) {
+                                     # For binary classification, assume first two levels
+                                     if (nlevels(true) == 2) {
+                                       tp <- sum(pred == levels(true)[2] & true == levels(true)[2])
+                                       fp <- sum(pred == levels(true)[2] & true == levels(true)[1])
+                                       fn <- sum(pred == levels(true)[1] & true == levels(true)[2])
+                                       precision <- tp / (tp + fp + 1e-10)
+                                       recall <- tp / (tp + fn + 1e-10)
+                                       score <- 2 * precision * recall / (precision + recall + 1e-10)
+                                     } else {
+                                       warning("F1 score currently only supports binary classification. Using accuracy instead.")
+                                       score <- mean(pred == true, na.rm = TRUE)
+                                     }
+                                   } else {
+                                     # For numeric binary classification (0/1)
+                                     tp <- sum(pred == 1 & true == 1)
+                                     fp <- sum(pred == 1 & true == 0)
+                                     fn <- sum(pred == 0 & true == 1)
+                                     precision <- tp / (tp + fp + 1e-10)
+                                     recall <- tp / (tp + fn + 1e-10)
+                                     score <- 2 * precision * recall / (precision + recall + 1e-10)
+                                   }
+                                 }
+                                 
+                                 # RETURN the score (not assign to scores[i])
+                                 score
+                               }
+    
+    if (show_progress)
+    {
+      close(pb)
+    }
+    
+    parallel::stopCluster(cl_SOCK)
+    
+    return(scores)      
   }
   
-  if (show_progress)
-    close(pb)
-  
-  return(scores)
 }

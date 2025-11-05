@@ -2,7 +2,7 @@
 
 > A Unified Machine Learning Interface for R
 
-[![Documentation](https://img.shields.io/badge/documentation-is_here-green)](https://techtonique.github.io/unifiedml/index.html)
+[![Documentation](https://img.shields.io/badge/documentation-is_here-green)](http://docs.techtonique.net/unifiedml/index.html)
 
 ## Overview
 
