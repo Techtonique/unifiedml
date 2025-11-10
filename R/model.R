@@ -27,7 +27,7 @@ NULL
 #' @field y_train Training target vector
 #' 
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' # Regression example with glmnet
 #' library(glmnet)
 #' X <- matrix(rnorm(100), ncol = 4)
@@ -297,7 +297,7 @@ Model <- R6::R6Class(
       y_pred <- self$predict(X_grid)
       
       # Create plot
-      par(mfrow = c(1, 1))
+      #par(mfrow = c(1, 1))
       plot(self$X_train[, feature], self$y_train,
            xlab = feature_name,
            ylab = ifelse(self$task == "regression", "y", "Class"),
@@ -340,7 +340,7 @@ Model <- R6::R6Class(
 #' @return Vector of cross-validation scores for each fold
 #' 
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' library(glmnet)
 #' X <- matrix(rnorm(100), ncol = 4)
 #' y <- 2*X[,1] - 1.5*X[,2] + rnorm(25)  # numeric -> regression

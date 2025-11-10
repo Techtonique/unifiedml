@@ -42,7 +42,7 @@ across different model types. The scoring metric is automatically
 selected based on the detected task type.
 }
 \examples{
-\dontrun{
+\donttest{
 library(glmnet)
 X <- matrix(rnorm(100), ncol = 4)
 y <- 2*X[,1] - 1.5*X[,2] + rnorm(25)  # numeric -> regression
