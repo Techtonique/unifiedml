@@ -1,6 +1,6 @@
 Package: unifiedml
 Type: Package
-Title: Unified Interface for Machine Learning Models in R
+Title: Unified Interface for Machine Learning Models
 Version: 0.1.0
 Date: 2025-11-05
 Authors@R: 
@@ -8,11 +8,7 @@ Authors@R:
            email = "thierry.moudiki@gmail.com",
            role = c("aut", "cre"))
 Maintainer: T. Moudiki <thierry.moudiki@gmail.com>
-Description: Provides a unified R6-based interface for various machine learning 
-    models with automatic interface detection, consistent cross-validation, 
-    model interpretations via numerical derivatives, and visualization. 
-    Supports both regression and classification tasks with any model function 
-    that follows R's standard modeling conventions (formula or matrix interface).
+Description: Provides a unified R6-based interface for various machine learning models with automatic interface detection, consistent cross-validation, model interpretations via numerical derivatives, and visualization. Supports both regression and classification tasks with any model function that follows R's standard modeling conventions (formula or matrix interface).
 License: MIT + file LICENSE
 URL: https://github.com/Techtonique/unifiedml
 BugReports: https://github.com/Techtonique/unifiedml/issues

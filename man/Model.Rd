@@ -15,7 +15,7 @@ features. The task type (regression vs classification) is automatically detected
 from the response variable type.
 }
 \examples{
-\dontrun{
+\donttest{
 # Regression example with glmnet
 library(glmnet)
 X <- matrix(rnorm(100), ncol = 4)
