@@ -24,10 +24,18 @@ For now:
 
 ## Installation
 
-```R
-# Install from GitHub (development version, for now)
-# devtools::install_github("Techtonique/unifiedml")
-```
+- From CRAN: 
+
+  ```R
+  install.packages("unifiedml")
+  ```
+  
+- From Github (development version):
+  
+  ```R
+  # Install from GitHub (development version, for now)
+  devtools::install_github("Techtonique/unifiedml")
+  ```
 
 ## Quick Start
 
