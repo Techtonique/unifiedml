@@ -240,9 +240,3 @@ If you use this package in your research, please cite:
   note = {R package version 0.1.0}
 }
 ```
-
-## See Also
-
-- [scikit-learn](https://scikit-learn.org/) - Python inspiration for this package
-- [caret](https://topepo.github.io/caret/) - Alternative unified ML interface in R
-- [mlr3](https://mlr3.mlr-org.com/) - Modern ML framework for R
