@@ -10,6 +10,71 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// boost_regression
+List boost_regression(Function model_creator, NumericMatrix X, NumericVector y, int B, List model_args, double eta, bool verbose);
+RcppExport SEXP _unifiedml_boost_regression(SEXP model_creatorSEXP, SEXP XSEXP, SEXP ySEXP, SEXP BSEXP, SEXP model_argsSEXP, SEXP etaSEXP, SEXP verboseSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Function >::type model_creator(model_creatorSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type X(XSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< int >::type B(BSEXP);
+    Rcpp::traits::input_parameter< List >::type model_args(model_argsSEXP);
+    Rcpp::traits::input_parameter< double >::type eta(etaSEXP);
+    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
+    rcpp_result_gen = Rcpp::wrap(boost_regression(model_creator, X, y, B, model_args, eta, verbose));
+    return rcpp_result_gen;
+END_RCPP
+}
+// predict_boost
+NumericVector predict_boost(List boost_obj, NumericMatrix X_new);
+RcppExport SEXP _unifiedml_predict_boost(SEXP boost_objSEXP, SEXP X_newSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type boost_obj(boost_objSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type X_new(X_newSEXP);
+    rcpp_result_gen = Rcpp::wrap(predict_boost(boost_obj, X_new));
+    return rcpp_result_gen;
+END_RCPP
+}
+// variable_importance_boost
+NumericVector variable_importance_boost(List boost_obj, bool normalize);
+RcppExport SEXP _unifiedml_variable_importance_boost(SEXP boost_objSEXP, SEXP normalizeSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type boost_obj(boost_objSEXP);
+    Rcpp::traits::input_parameter< bool >::type normalize(normalizeSEXP);
+    rcpp_result_gen = Rcpp::wrap(variable_importance_boost(boost_obj, normalize));
+    return rcpp_result_gen;
+END_RCPP
+}
+// variable_importance_boost_with_X
+NumericVector variable_importance_boost_with_X(List boost_obj, NumericMatrix X, bool normalize);
+RcppExport SEXP _unifiedml_variable_importance_boost_with_X(SEXP boost_objSEXP, SEXP XSEXP, SEXP normalizeSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type boost_obj(boost_objSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type X(XSEXP);
+    Rcpp::traits::input_parameter< bool >::type normalize(normalizeSEXP);
+    rcpp_result_gen = Rcpp::wrap(variable_importance_boost_with_X(boost_obj, X, normalize));
+    return rcpp_result_gen;
+END_RCPP
+}
+// compute_loss_history
+NumericVector compute_loss_history(List boost_obj);
+RcppExport SEXP _unifiedml_compute_loss_history(SEXP boost_objSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type boost_obj(boost_objSEXP);
+    rcpp_result_gen = Rcpp::wrap(compute_loss_history(boost_obj));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rcpp_hello_world
 List rcpp_hello_world();
 RcppExport SEXP _unifiedml_rcpp_hello_world() {
@@ -22,6 +87,11 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_unifiedml_boost_regression", (DL_FUNC) &_unifiedml_boost_regression, 7},
+    {"_unifiedml_predict_boost", (DL_FUNC) &_unifiedml_predict_boost, 2},
+    {"_unifiedml_variable_importance_boost", (DL_FUNC) &_unifiedml_variable_importance_boost, 2},
+    {"_unifiedml_variable_importance_boost_with_X", (DL_FUNC) &_unifiedml_variable_importance_boost_with_X, 3},
+    {"_unifiedml_compute_loss_history", (DL_FUNC) &_unifiedml_compute_loss_history, 1},
     {"_unifiedml_rcpp_hello_world", (DL_FUNC) &_unifiedml_rcpp_hello_world, 0},
     {NULL, NULL, 0}
 };

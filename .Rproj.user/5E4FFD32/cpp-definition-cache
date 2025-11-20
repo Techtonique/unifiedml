@@ -1,5 +1,62 @@
 [
     {
+        "file": "/Users/t/Documents/R_Packages/unifiedml/src/booster.cpp",
+        "file_last_write": 1763543400.0,
+        "definitions": [
+            {
+                "usr": "c:@F@boost_regression#$@N@Rcpp@S@Function_Impl>#@N@Rcpp@ST>1#T@PreserveStorage#$@N@Rcpp@S@Matrix>#VI14#@N@Rcpp@ST>1#T@PreserveStorage#$@N@Rcpp@S@Vector>#VI14#@N@Rcpp@ST>1#T@PreserveStorage#I#$@N@Rcpp@S@Vector>#VI19#@N@Rcpp@ST>1#T@PreserveStorage#d#b#",
+                "kind": 6,
+                "parent_name": "",
+                "name": "boost_regression(Function, NumericMatrix, NumericVector, int, List, double, bool)",
+                "file": "/Users/t/Documents/R_Packages/unifiedml/src/booster.cpp",
+                "line": 65,
+                "column": 6,
+                "hidden": false
+            },
+            {
+                "usr": "c:@F@predict_boost#$@N@Rcpp@S@Vector>#VI19#@N@Rcpp@ST>1#T@PreserveStorage#$@N@Rcpp@S@Matrix>#VI14#@N@Rcpp@ST>1#T@PreserveStorage#",
+                "kind": 6,
+                "parent_name": "",
+                "name": "predict_boost(List, NumericMatrix)",
+                "file": "/Users/t/Documents/R_Packages/unifiedml/src/booster.cpp",
+                "line": 192,
+                "column": 15,
+                "hidden": false
+            },
+            {
+                "usr": "c:@F@variable_importance_boost#$@N@Rcpp@S@Vector>#VI19#@N@Rcpp@ST>1#T@PreserveStorage#b#",
+                "kind": 6,
+                "parent_name": "",
+                "name": "variable_importance_boost(List, bool)",
+                "file": "/Users/t/Documents/R_Packages/unifiedml/src/booster.cpp",
+                "line": 246,
+                "column": 15,
+                "hidden": false
+            },
+            {
+                "usr": "c:@F@variable_importance_boost_with_X#$@N@Rcpp@S@Vector>#VI19#@N@Rcpp@ST>1#T@PreserveStorage#$@N@Rcpp@S@Matrix>#VI14#@N@Rcpp@ST>1#T@PreserveStorage#b#",
+                "kind": 6,
+                "parent_name": "",
+                "name": "variable_importance_boost_with_X(List, NumericMatrix, bool)",
+                "file": "/Users/t/Documents/R_Packages/unifiedml/src/booster.cpp",
+                "line": 286,
+                "column": 15,
+                "hidden": false
+            },
+            {
+                "usr": "c:@F@compute_loss_history#$@N@Rcpp@S@Vector>#VI19#@N@Rcpp@ST>1#T@PreserveStorage#",
+                "kind": 6,
+                "parent_name": "",
+                "name": "compute_loss_history(List)",
+                "file": "/Users/t/Documents/R_Packages/unifiedml/src/booster.cpp",
+                "line": 406,
+                "column": 15,
+                "hidden": false
+            }
+        ],
+        "hidden": false
+    },
+    {
         "file": "/Users/t/Documents/R_Packages/unifiedml/src/rcpp_hello_world.cpp",
         "file_last_write": 1762277088.0,
         "definitions": [
