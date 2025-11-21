@@ -6,7 +6,6 @@
         "-I/opt/R/x86_64/include",
         "-fPIC",
         "-falign-functions=64",
-        "-fdiagnostics-color=always",
         "-I/Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/Rcpp/include",
         "-DEIGEN_DONT_VECTORIZE",
         "-I/Library/Developer/CommandLineTools/usr/lib/clang/15.0.0/include",

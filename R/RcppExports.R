@@ -35,11 +35,10 @@
 #' 
 #' @examples
 #' \dontrun{
-#' library(rpart)
 #' 
 #' # Model creator function
 #' model_creator <- function() {
-#'   Model$new(rpart::rpart)
+#'   Model$new(lm)
 #' }
 #' 
 #' # Generate data
@@ -60,9 +59,8 @@
 #' sqrt(mean((y - preds)^2))  # RMSE
 #' }
 #' 
-#' @export
 boost_regression <- function(model_creator, X, y, B, model_args, eta = 0.1, verbose = TRUE) {
-    .Call(`_unifiedml_boost_regression`, model_creator, X, y, B, model_args, eta, verbose)
+    .Call('_unifiedml_boost_regression', PACKAGE = 'unifiedml', model_creator, X, y, B, model_args, eta, verbose)
 }
 
 #' Predict using a Boosted Model
@@ -74,9 +72,8 @@ boost_regression <- function(model_creator, X, y, B, model_args, eta = 0.1, verb
 #' 
 #' @return Vector of predictions (length m)
 #' 
-#' @export
 predict_boost <- function(boost_obj, X_new) {
-    .Call(`_unifiedml_predict_boost`, boost_obj, X_new)
+    .Call('_unifiedml_predict_boost', PACKAGE = 'unifiedml', boost_obj, X_new)
 }
 
 #' Compute Variable Importance for Boosted Model
@@ -96,9 +93,8 @@ predict_boost <- function(boost_obj, X_new) {
 #' computed as sum over iterations of:
 #' SSE_improvement * |correlation(X_j, f_b)|
 #' 
-#' @export
 variable_importance_boost <- function(boost_obj, normalize = TRUE) {
-    .Call(`_unifiedml_variable_importance_boost`, boost_obj, normalize)
+    .Call('_unifiedml_variable_importance_boost', PACKAGE = 'unifiedml', boost_obj, normalize)
 }
 
 #' Compute Variable Importance for Boosted Model (with X)
@@ -121,9 +117,8 @@ variable_importance_boost <- function(boost_obj, normalize = TRUE) {
 #' Note: This is a heuristic proxy. For tree-based models, model-specific
 #' importance measures (e.g., split improvement) may be more accurate.
 #' 
-#' @export
 variable_importance_boost_with_X <- function(boost_obj, X, normalize = TRUE) {
-    .Call(`_unifiedml_variable_importance_boost_with_X`, boost_obj, X, normalize)
+    .Call('_unifiedml_variable_importance_boost_with_X', PACKAGE = 'unifiedml', boost_obj, X, normalize)
 }
 
 #' Compute Training Loss History
@@ -134,12 +129,7 @@ variable_importance_boost_with_X <- function(boost_obj, X, normalize = TRUE) {
 #' 
 #' @return Vector of MSE values (length B+1), starting with initial MSE
 #' 
-#' @export
 compute_loss_history <- function(boost_obj) {
-    .Call(`_unifiedml_compute_loss_history`, boost_obj)
-}
-
-rcpp_hello_world <- function() {
-    .Call(`_unifiedml_rcpp_hello_world`)
+    .Call('_unifiedml_compute_loss_history', PACKAGE = 'unifiedml', boost_obj)
 }
 

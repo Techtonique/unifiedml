@@ -47,11 +47,10 @@ learner to these residuals (pseudo-residuals) and updates predictions.
 }
 \examples{
 \dontrun{
-library(rpart)
 
 # Model creator function
 model_creator <- function() {
-  Model$new(rpart::rpart)
+  Model$new(lm)
 }
 
 # Generate data

@@ -75,16 +75,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// rcpp_hello_world
-List rcpp_hello_world();
-RcppExport SEXP _unifiedml_rcpp_hello_world() {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    rcpp_result_gen = Rcpp::wrap(rcpp_hello_world());
-    return rcpp_result_gen;
-END_RCPP
-}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_unifiedml_boost_regression", (DL_FUNC) &_unifiedml_boost_regression, 7},
@@ -92,7 +82,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"_unifiedml_variable_importance_boost", (DL_FUNC) &_unifiedml_variable_importance_boost, 2},
     {"_unifiedml_variable_importance_boost_with_X", (DL_FUNC) &_unifiedml_variable_importance_boost_with_X, 3},
     {"_unifiedml_compute_loss_history", (DL_FUNC) &_unifiedml_compute_loss_history, 1},
-    {"_unifiedml_rcpp_hello_world", (DL_FUNC) &_unifiedml_rcpp_hello_world, 0},
     {NULL, NULL, 0}
 };
 

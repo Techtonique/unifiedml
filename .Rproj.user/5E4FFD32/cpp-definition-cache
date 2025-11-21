@@ -1,7 +1,7 @@
 [
     {
         "file": "/Users/t/Documents/R_Packages/unifiedml/src/booster.cpp",
-        "file_last_write": 1763543400.0,
+        "file_last_write": 1763711787.0,
         "definitions": [
             {
                 "usr": "c:@F@boost_regression#$@N@Rcpp@S@Function_Impl>#@N@Rcpp@ST>1#T@PreserveStorage#$@N@Rcpp@S@Matrix>#VI14#@N@Rcpp@ST>1#T@PreserveStorage#$@N@Rcpp@S@Vector>#VI14#@N@Rcpp@ST>1#T@PreserveStorage#I#$@N@Rcpp@S@Vector>#VI19#@N@Rcpp@ST>1#T@PreserveStorage#d#b#",
@@ -9,7 +9,7 @@
                 "parent_name": "",
                 "name": "boost_regression(Function, NumericMatrix, NumericVector, int, List, double, bool)",
                 "file": "/Users/t/Documents/R_Packages/unifiedml/src/booster.cpp",
-                "line": 65,
+                "line": 63,
                 "column": 6,
                 "hidden": false
             },
@@ -19,7 +19,7 @@
                 "parent_name": "",
                 "name": "predict_boost(List, NumericMatrix)",
                 "file": "/Users/t/Documents/R_Packages/unifiedml/src/booster.cpp",
-                "line": 192,
+                "line": 191,
                 "column": 15,
                 "hidden": false
             },
@@ -39,7 +39,7 @@
                 "parent_name": "",
                 "name": "variable_importance_boost_with_X(List, NumericMatrix, bool)",
                 "file": "/Users/t/Documents/R_Packages/unifiedml/src/booster.cpp",
-                "line": 286,
+                "line": 287,
                 "column": 15,
                 "hidden": false
             },
@@ -49,25 +49,8 @@
                 "parent_name": "",
                 "name": "compute_loss_history(List)",
                 "file": "/Users/t/Documents/R_Packages/unifiedml/src/booster.cpp",
-                "line": 406,
+                "line": 408,
                 "column": 15,
-                "hidden": false
-            }
-        ],
-        "hidden": false
-    },
-    {
-        "file": "/Users/t/Documents/R_Packages/unifiedml/src/rcpp_hello_world.cpp",
-        "file_last_write": 1762277088.0,
-        "definitions": [
-            {
-                "usr": "c:@F@rcpp_hello_world#",
-                "kind": 6,
-                "parent_name": "",
-                "name": "rcpp_hello_world",
-                "file": "/Users/t/Documents/R_Packages/unifiedml/src/rcpp_hello_world.cpp",
-                "line": 6,
-                "column": 6,
                 "hidden": false
             }
         ],

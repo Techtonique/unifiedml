@@ -2,7 +2,7 @@ Package: unifiedml
 Type: Package
 Title: Unified Interface for Machine Learning Models
 Version: 0.2.0
-Date: 2025-11-19
+Date: 2025-11-21
 Authors@R: 
     person("T.", "Moudiki", 
            email = "thierry.moudiki@gmail.com",
@@ -16,7 +16,8 @@ Depends:
     R (>= 3.5.0),
     doParallel,
     R6,
-    foreach
+    foreach, 
+    Rcpp (>= 1.1.0)
 Imports: 
     Rcpp (>= 1.1.0)
 Suggests: 

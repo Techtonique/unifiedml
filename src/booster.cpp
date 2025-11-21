@@ -35,11 +35,10 @@ using namespace Rcpp;
 //' 
 //' @examples
 //' \dontrun{
-//' library(rpart)
 //' 
 //' # Model creator function
 //' model_creator <- function() {
-//'   Model$new(rpart::rpart)
+//'   Model$new(lm)
 //' }
 //' 
 //' # Generate data
@@ -60,7 +59,6 @@ using namespace Rcpp;
 //' sqrt(mean((y - preds)^2))  # RMSE
 //' }
 //' 
-//' @export
 // [[Rcpp::export]]
 List boost_regression(Function model_creator,
                      NumericMatrix X,
@@ -69,6 +67,8 @@ List boost_regression(Function model_creator,
                      List model_args,
                      double eta = 0.1,
                      bool verbose = true) {
+  
+  RNGScope scope;
  
  if (model_args.size() == 0)
    model_args = List::create();
@@ -187,9 +187,10 @@ List boost_regression(Function model_creator,
 //' 
 //' @return Vector of predictions (length m)
 //' 
-//' @export
 // [[Rcpp::export]]
 NumericVector predict_boost(List boost_obj, NumericMatrix X_new) {
+  
+  RNGScope scope;
  
  List models = boost_obj["models"];
  double eta = boost_obj["eta"];
@@ -241,10 +242,11 @@ NumericVector predict_boost(List boost_obj, NumericMatrix X_new) {
 //' computed as sum over iterations of:
 //' SSE_improvement * |correlation(X_j, f_b)|
 //' 
-//' @export
 // [[Rcpp::export]]
 NumericVector variable_importance_boost(List boost_obj,
                                        bool normalize = true) {
+  
+  RNGScope scope;
  
  // Extract components
  NumericMatrix resid_hist = boost_obj["residuals_history"];
@@ -281,11 +283,12 @@ NumericVector variable_importance_boost(List boost_obj,
 //' Note: This is a heuristic proxy. For tree-based models, model-specific
 //' importance measures (e.g., split improvement) may be more accurate.
 //' 
-//' @export
 // [[Rcpp::export]]
 NumericVector variable_importance_boost_with_X(List boost_obj, 
                                               NumericMatrix X,
                                               bool normalize = true) {
+  
+  RNGScope scope;
  
  // Extract components
  NumericMatrix resid_hist = boost_obj["residuals_history"];
@@ -401,9 +404,10 @@ NumericVector variable_importance_boost_with_X(List boost_obj,
 //' 
 //' @return Vector of MSE values (length B+1), starting with initial MSE
 //' 
-//' @export
 // [[Rcpp::export]]
 NumericVector compute_loss_history(List boost_obj) {
+  
+  RNGScope scope;
  
  NumericMatrix resid_hist = boost_obj["residuals_history"];
  int n = resid_hist.nrow();

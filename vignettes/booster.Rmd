@@ -1,0 +1,43 @@
+---
+title: "Booster"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Booster}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r fig.width=7}
+library(unifiedml) # this package
+
+ base_learner <- function() {
+   Model$new(lm)
+ }
+ 
+ boost_model <- BoostingModel$new(
+   base_learner_fn = base_learner,
+   B = 100,
+   eta = 0.1
+ )
+ 
+ # Generate sample data
+ set.seed(123)
+ X <- matrix(rnorm(200), ncol = 4)
+ y <- 2*X[,1] - 1.5*X[,2] + rnorm(50)
+ 
+ # Fit and predict
+ boost_model$fit(X, y)
+ preds <- boost_model$predict(X)
+ 
+ # Get variable importance
+ imp <- boost_model$variable_importance()
+ print(imp)
+ 
+ # Plot loss history
+ boost_model$plot_loss()
+ 
+ # Cross-validation
+ (cv_scores <- cross_val_score(boost_model, X, y, cv = 5))
+```
+
+
