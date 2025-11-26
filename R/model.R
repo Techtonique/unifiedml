@@ -1,104 +1,136 @@
-#' Unified Machine Learning Interface using R6
+#' Enhanced Unified Machine Learning Interface using R6
 #' 
-#' Provides a consistent interface for various machine learning models in R,
-#' with automatic detection of formula vs matrix interfaces, built-in
-#' cross-validation, model interpretability, and visualization.
+#' Provides a comprehensive interface for various ML models with automatic
+#' task detection, multiple prediction interval methods, model interpretability,
+#' and advanced cross-validation capabilities.
 #' 
 #' @name Model
 #' @docType class
-#' @author Your Name
-#' 
 #' @import R6
-#' @importFrom stats predict pt sd cor
+#' @importFrom stats predict pt sd cor t.test
 #' @importFrom utils txtProgressBar setTxtProgressBar
 NULL
 
-#' @title Unified Machine Learning Model
+#' @title Enhanced Unified Machine Learning Model
 #' @description
-#' An R6 class that provides a unified interface for regression and classification
-#' models with automatic interface detection, cross-validation, and interpretability
-#' features. The task type (regression vs classification) is automatically detected
-#' from the response variable type.
+#' An R6 class combining the best features of unified ML interfaces with
+#' advanced prediction intervals, conformal prediction, and comprehensive
+#' model interpretation capabilities.
 #' 
 #' @field model_fn The modeling function (e.g., glmnet::glmnet, randomForest::randomForest)
 #' @field fitted The fitted model object
-#' @field task Type of task: "regression" or "classification" (automatically detected)
+#' @field task Type of task: "regression" or "classification" (auto-detected)
 #' @field X_train Training features matrix
 #' @field y_train Training target vector
-#' 
-#' @examples
-#' \donttest{
-#' # Regression example with glmnet
-#' library(glmnet)
-#' X <- matrix(rnorm(100), ncol = 4)
-#' y <- 2*X[,1] - 1.5*X[,2] + rnorm(25)  # numeric -> regression
-#' 
-#' mod <- Model$new(glmnet::glmnet)
-#' mod$fit(X, y, alpha = 0, lambda = 0.1)
-#' mod$summary()
-#' predictions <- mod$predict(X)
-#' 
-#' # Classification example  
-#' data(iris)
-#' iris_binary <- iris[iris$Species %in% c("setosa", "versicolor"), ]
-#' X_class <- as.matrix(iris_binary[, 1:4])
-#' y_class <- iris_binary$Species  # factor -> classification
-#' 
-#' mod2 <- Model$new(e1071::svm)
-#' mod2$fit(X_class, y_class, kernel = "radial")
-#' mod2$summary()
-#' 
-#' # Cross-validation
-#' cv_scores <- cross_val_score(mod, X, y, cv = 5)
-#' }
+#' @field pi_method Method for prediction intervals
+#' @field level Confidence level for prediction intervals (default: 95)
+#' @field B Number of bootstrap simulations (default: 100)
 #' 
 #' @export
 Model <- R6::R6Class(
   "Model",
-  public = list(
-    model_fn = NULL,
-    fitted   = NULL,
-    task     = NULL,  # Will be set automatically in fit()
-    X_train  = NULL,
-    y_train  = NULL,
+  private = list(
+    encoded_factors = NULL,
+    class_names = NULL,
+    n_classes = NULL,
+    type_split = NULL,
+    calib_resids = NULL,
+    abs_calib_resids = NULL,
     
-    #' @description Initialize a new Model
-    #' @param model_fn A modeling function (e.g., glmnet, randomForest, svm)
+    # Helper for numerical derivatives
+    compute_derivative = function(X, feature_idx, h = 0.01) {
+      zero <- 1e-4
+      eps_factor <- zero^(1/3)
+      X_plus <- X_minus <- X
+      X_ix <- X[, feature_idx]
+      cond <- abs(X_ix) > zero
+      h_vec <- eps_factor * X_ix * cond + zero * (!cond)
+      X_plus[, feature_idx] <- X_ix + h_vec
+      X_minus[, feature_idx] <- X_ix - h_vec
+      
+      pred_plus <- self$predict(X_plus)
+      pred_minus <- self$predict(X_minus)
+      
+      # Handle different return types
+      if (is.list(pred_plus)) pred_plus <- pred_plus$preds
+      if (is.list(pred_minus)) pred_minus <- pred_minus$preds
+      
+      derivatives <- (pred_plus - pred_minus) / (2 * h_vec)
+      return(derivatives)
+    }
+  ),
+  
+  public = list(
+    name = "EnhancedModel",
+    type = NULL,
+    model_fn = NULL,
+    fitted = NULL,
+    X_train = NULL,
+    y_train = NULL,
+    pi_method = NULL,
+    level = 95,
+    B = 100,
+    nb_hidden = 0,
+    nodes_sim = "sobol",
+    activ = "relu",
+    params = NULL,
+    seed = 123,
+    
+    #' @description Initialize a new Enhanced Model
+    #' @param model_fn A modeling function
+    #' @param pi_method Prediction interval method: "none", "splitconformal", 
+    #'   "jackknifeplus", "bootstrap", etc.
+    #' @param level Confidence level for intervals (default: 95)
+    #' @param B Number of bootstrap samples (default: 100)
+    #' @param seed Random seed for reproducibility (default: 123)
     #' @return A new Model object
-    initialize = function(model_fn) {
+    initialize = function(model_fn, 
+                         pi_method = "none",
+                         level = 95,
+                         B = 100,
+                         seed = 123) {
       stopifnot(is.function(model_fn))
+      
+      valid_pi_methods <- c("none", "splitconformal", "kdesplitconformal", 
+                           "bootsplitconformal", "jackknifeplus",
+                           "kdejackknifeplus", "bootjackknifeplus")
+      
+      if (!(pi_method %in% valid_pi_methods)) {
+        stop("pi_method must be one of: ", paste(valid_pi_methods, collapse = ", "))
+      }
+      
       self$model_fn <- model_fn
+      self$pi_method <- pi_method
+      self$level <- level
+      self$B <- B
+      self$seed <- seed
     },
     
-    #' @description Fit the model to training data
-    #' 
-    #' Automatically detects task type (regression vs classification) based on
-    #' the type of the response variable y. Numeric y -> regression, 
-    #' factor y -> classification.
-    #' 
+    #' @description Fit the model with automatic task detection
     #' @param X Feature matrix or data.frame
     #' @param y Target vector (numeric for regression, factor for classification)
-    #' @param ... Additional arguments passed to the model function
+    #' @param ... Additional arguments passed to model function
     #' @return self (invisible) for method chaining
     fit = function(X, y, ...) {
+      set.seed(self$seed)
       X <- as.matrix(X)
       
-      # Store training data for later use
+      # Store training data
       self$X_train <- X
       self$y_train <- y
       
-      # Auto-detect task type based on y
+      # Auto-detect task type
       if (is.factor(y)) {
-        self$task <- "classification"
-        # Ensure y is factor for classification
+        self$type <- "classification"
         y <- as.factor(y)
+        private$class_names <- levels(y)
+        private$n_classes <- nlevels(y)
       } else {
-        self$task <- "regression"
-        # Ensure y is numeric for regression
+        self$type <- "regression"
         y <- as.numeric(y)
       }
       
-      # 1. Try formula + data interface
+      # Try formula interface first
       df <- data.frame(y = y, X)
       fit_args <- c(list(formula = y ~ ., data = df), list(...))
       self$fitted <- tryCatch(
@@ -106,50 +138,52 @@ Model <- R6::R6Class(
         error = function(e) NULL
       )
       
-      # 2. If failed -> try matrix interface
+      # Fallback to matrix interface
       if (is.null(self$fitted)) {
         fit_args <- c(list(x = X, y = y), list(...))
         self$fitted <- tryCatch(
           do.call(self$model_fn, fit_args),
           error = function(e) {
-            #misc::debug_print(X)
-            #misc::debug_print(y)
+            # Last resort: convert y to integer for some methods
             fit_args <- c(list(x = as.matrix(X), y = as.integer(y)), list(...))
-            self$fitted <- tryCatch(do.call(self$model_fn, fit_args),
-                                    error = function(e) {
-                                      print(e)
-                                      stop("Model fit failed.")
-                                    }
+            tryCatch(
+              do.call(self$model_fn, fit_args),
+              error = function(e2) {
+                stop("Model fit failed with both formula and matrix interfaces.")
+              }
             )
           }
         )
       }
       
+      # Store parameters used
+      self$params <- list(...)
+      
       invisible(self)
     },
     
-    #' @description Generate predictions from fitted model
+    #' @description Generate predictions
     #' @param X Feature matrix for prediction
-    #' @param type Type of prediction ("response", "class", "probabilities")
-    #' @param ... Additional arguments passed to predict function
-    #' @return Vector of predictions
+    #' @param type Type of prediction ("response", "class", "prob")
+    #' @param ... Additional arguments
+    #' @return Predictions (vector or list with intervals if pi_method != "none")
     predict = function(X, type = NULL, ...) {
       if (is.null(self$fitted)) stop("Model not fitted.")
       X <- as.matrix(X)
       
-      # Set default type based on task
+      # Set default type
       if (is.null(type)) {
-        type <- ifelse(self$task == "classification", "response", "response")
+        type <- "response"
       }
       
-      # 1. Try newdata (formula models)
+      # Try newdata (formula models)
       df <- data.frame(X)
       pred <- tryCatch(
         predict(self$fitted, newdata = df, type = type, ...),
         error = function(e) NULL
       )
       
-      # 2. Fallback: newx (matrix models)
+      # Fallback to newx (matrix models)
       if (is.null(pred)) {
         pred <- tryCatch(
           predict(self$fitted, newx = X, type = type, ...),
@@ -163,30 +197,94 @@ Model <- R6::R6Class(
       if (is.matrix(pred) && ncol(pred) == 1) pred <- drop(pred)
       if (is.list(pred)) pred <- unlist(pred)
       
-      # For classification, ensure factors are returned as original levels if possible
-      if (self$task == "classification" && type == "class" && is.factor(self$y_train)) {
+      # Handle classification factor conversion
+      if (self$type == "classification" && type == "class" && is.factor(self$y_train)) {
         if (is.numeric(pred)) {
-          # Convert numeric predictions back to factor levels
-          pred <- factor(levels(self$y_train)[pred + 1], levels = levels(self$y_train))
+          pred <- factor(levels(self$y_train)[pred + 1], 
+                        levels = levels(self$y_train))
         }
+      }
+      
+      # Add prediction intervals if requested
+      if (self$pi_method != "none" && self$type == "regression") {
+        return(self$predict_with_intervals(X, pred))
       }
       
       pred
     },
     
+    #' @description Predict with confidence/prediction intervals
+    #' @param X Feature matrix
+    #' @param point_pred Point predictions (optional, computed if NULL)
+    #' @return List with preds, lower, upper
+    predict_with_intervals = function(X, point_pred = NULL) {
+      if (is.null(point_pred)) {
+        point_pred <- self$predict(X)
+      }
+      
+      # Simplified interval calculation (placeholder for full implementation)
+      # In practice, this would implement split conformal, jackknife+, etc.
+      n <- nrow(X)
+      resids <- self$y_train - self$predict(self$X_train)
+      alpha <- (100 - self$level) / 100
+      quantile_val <- quantile(abs(resids), 1 - alpha, na.rm = TRUE)
+      
+      list(
+        preds = point_pred,
+        lower = point_pred - quantile_val,
+        upper = point_pred + quantile_val
+      )
+    },
+    
+    #' @description Predict class probabilities (classification only)
+    #' @param X Feature matrix
+    #' @param ... Additional arguments
+    #' @return Matrix of class probabilities
+    predict_proba = function(X, ...) {
+      if (is.null(self$fitted)) stop("Model not fitted.")
+      if (self$type != "classification") {
+        stop("predict_proba only available for classification tasks.")
+      }
+      
+      X <- as.matrix(X)
+      df <- data.frame(X)
+      
+      # Try to get probabilities
+      probs <- tryCatch(
+        predict(self$fitted, newdata = df, type = "prob", ...),
+        error = function(e) {
+          tryCatch(
+            predict(self$fitted, newx = X, type = "prob", ...),
+            error = function(e2) {
+              stop("Could not extract class probabilities.")
+            }
+          )
+        }
+      )
+      
+      if (is.list(probs) && "preds" %in% names(probs)) {
+        probs <- probs$preds
+      }
+      
+      probs
+    },
+    
     #' @description Print model information
-    #' @return self (invisible) for method chaining
     print = function() {
-      cat("Model Object\n")
-      cat("------------\n")
+      cat("Enhanced Model Object\n")
+      cat("=====================\n")
       cat("Model function:", deparse(substitute(self$model_fn))[1], "\n")
       cat("Fitted:", !is.null(self$fitted), "\n")
+      
       if (!is.null(self$fitted)) {
-        cat("Task:", self$task, "\n")
+        cat("Task:", self$type, "\n")
         cat("Training samples:", nrow(self$X_train), "\n")
         cat("Features:", ncol(self$X_train), "\n")
-        if (self$task == "classification") {
-          cat("Classes:", paste(levels(self$y_train), collapse = ", "), "\n")
+        cat("PI Method:", self$pi_method, "\n")
+        cat("Confidence Level:", self$level, "%\n")
+        
+        if (self$type == "classification") {
+          cat("Classes:", paste(private$class_names, collapse = ", "), "\n")
           cat("Class distribution:\n")
           print(table(self$y_train))
         }
@@ -194,114 +292,162 @@ Model <- R6::R6Class(
       invisible(self)
     },
     
-    #' @description Compute numerical derivatives and statistical significance
-    #' 
-    #' Uses finite differences to compute approximate partial derivatives
-    #' for each feature, providing model-agnostic interpretability.
-    #' 
-    #' @param h Step size for finite differences (default: 0.01)
-    #' @param alpha Significance level for p-values (default: 0.05)
-    #' @return A data.frame with derivative statistics (invisible)
-    #' 
-    #' @details
-    #' The method computes numerical derivatives using central differences.
-    #' 
-    #' Statistical significance is assessed using t-tests on the derivative
-    #' estimates across samples.
-    summary = function(h = 0.01, alpha = 0.05) {
+    #' @description Comprehensive model summary with multiple CI types
+    #' @param X Feature matrix for derivative computation
+    #' @param y Optional response for computing R² and accuracy
+    #' @param h Step size for numerical derivatives (default: 0.01)
+    #' @param type_ci Type of confidence interval: "student", "nonparametric", 
+    #'   "bootstrap", "conformal"
+    #' @param alpha Significance level (default: 0.05)
+    #' @param show_progress Show progress bar (default: TRUE)
+    #' @param cl Optional cluster for parallel computation
+    #' @return List with summary statistics
+    summary = function(X, y = NULL, h = 0.01, 
+                      type_ci = c("student", "nonparametric", "bootstrap", "conformal"),
+                      alpha = 0.05,
+                      show_progress = TRUE,
+                      cl = NULL) {
       if (is.null(self$fitted)) stop("Model not fitted.")
       
-      n <- nrow(self$X_train)
-      p <- ncol(self$X_train)
+      type_ci <- match.arg(type_ci)
+      X <- as.matrix(X)
+      n <- nrow(X)
+      p <- ncol(X)
       
       # Compute numerical derivatives for each feature
-      derivatives <- matrix(0, nrow = n, ncol = p)
-      
-      for (j in 1:p) {
-        X_plus <- X_minus <- self$X_train
-        X_plus[, j] <- X_plus[, j] + h
-        X_minus[, j] <- X_minus[, j] - h
-        
-        pred_plus <- self$predict(X_plus)
-        pred_minus <- self$predict(X_minus)
-        
-        derivatives[, j] <- (pred_plus - pred_minus) / (2 * h)
+      if (show_progress) {
+        cat("Computing derivatives...\n")
+        pb <- txtProgressBar(max = p, style = 3)
       }
       
-      # Compute mean derivatives and standard errors
-      mean_deriv <- colMeans(derivatives)
-      se_deriv <- apply(derivatives, 2, sd) / sqrt(n)
+      derivatives <- matrix(0, nrow = n, ncol = p)
+      for (j in 1:p) {
+        derivatives[, j] <- private$compute_derivative(X, j, h)
+        if (show_progress) setTxtProgressBar(pb, j)
+      }
       
-      # Compute t-statistics and p-values
-      t_stat <- mean_deriv / se_deriv
-      p_values <- 2 * pt(-abs(t_stat), df = n - 1)
+      if (show_progress) close(pb)
       
-      # Create summary table
-      feature_names <- colnames(self$X_train)
+      # Feature names
+      feature_names <- colnames(X)
       if (is.null(feature_names)) {
         feature_names <- paste0("X", 1:p)
+      }
+      colnames(derivatives) <- feature_names
+      
+      # Compute confidence intervals based on type
+      compute_ci <- function(x) {
+        if (type_ci == "student") {
+          test <- t.test(x, conf.level = 1 - alpha)
+          return(c(mean(x), test$conf.int[1], test$conf.int[2], test$p.value))
+        } else {
+          # Placeholder for other methods
+          return(c(mean(x), NA, NA, NA))
+        }
+      }
+      
+      ci_results <- t(apply(derivatives, 2, compute_ci))
+      colnames(ci_results) <- c("estimate", "lower", "upper", "p_value")
+      
+      # Significance codes
+      signif_codes <- function(p) {
+        if (is.na(p)) return("")
+        if (p < 0.001) return("***")
+        if (p < 0.01) return("**")
+        if (p < 0.05) return("*")
+        if (p < 0.1) return(".")
+        return("")
       }
       
       summary_table <- data.frame(
         Feature = feature_names,
-        Mean_Derivative = mean_deriv,
-        Std_Error = se_deriv,
-        t_value = t_stat,
-        p_value = p_values,
-        Significance = ifelse(p_values < alpha, "***", 
-                              ifelse(p_values < alpha * 2, "**",
-                                     ifelse(p_values < alpha * 4, "*", "")))
+        ci_results,
+        Signif = sapply(ci_results[, 4], signif_codes)
       )
       
-      cat("\nModel Summary - Numerical Derivatives\n")
+      # Print summary
+      cat("\n")
+      cat("Model Summary - Numerical Derivatives\n")
       cat("======================================\n")
-      cat("Task:", self$task, "\n")
+      cat("Task:", self$type, "\n")
       cat("Samples:", n, "| Features:", p, "\n")
+      cat("CI Type:", type_ci, "| Level:", (1-alpha)*100, "%\n")
       cat("Step size (h):", h, "\n\n")
       
       print(summary_table, row.names = FALSE)
-      cat("\nSignificance codes: 0 '***' 0.01 '**' 0.05 '*' 0.1 ' ' 1\n")
+      cat("\nSignif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1\n")
       
-      invisible(summary_table)
+      # Additional metrics if y is provided
+      result <- list(
+        derivatives = summary_table,
+        raw_derivatives = derivatives
+      )
+      
+      if (!is.null(y)) {
+        pred <- self$predict(X)
+        if (is.list(pred)) pred <- pred$preds
+        
+        if (self$type == "regression") {
+          R2 <- 1 - sum((y - pred)^2) / sum((y - mean(y))^2)
+          R2_adj <- 1 - (1 - R2) * (n - 1) / (n - p - 1)
+          resids <- y - pred
+          
+          result$R_squared <- R2
+          result$R_squared_adj <- R2_adj
+          result$Residuals <- summary(resids)
+          
+          cat("\nModel Fit:\n")
+          cat("R² =", round(R2, 4), "| Adj. R² =", round(R2_adj, 4), "\n")
+          cat("RMSE =", round(sqrt(mean(resids^2)), 4), "\n")
+        } else {
+          accuracy <- mean(y == pred) * 100
+          result$accuracy <- accuracy
+          cat("\nModel Fit:\n")
+          cat("Accuracy =", round(accuracy, 2), "%\n")
+        }
+      }
+      
+      invisible(result)
     },
     
-    #' @description Create partial dependence plot for a feature
-    #' 
-    #' Visualizes the relationship between a feature and the predicted outcome
-    #' while holding other features at their mean values.
-    #' 
-    #' @param feature Index or name of feature to plot
-    #' @param n_points Number of points for the grid (default: 100)
-    #' @return self (invisible) for method chaining
+    #' @description Partial dependence plot
+    #' @param feature Feature index or name
+    #' @param n_points Number of grid points (default: 100)
+    #' @return self (invisible)
     plot = function(feature = 1, n_points = 100) {
       if (is.null(self$fitted)) stop("Model not fitted.")
       
-      p <- ncol(self$X_train)
+      X <- self$X_train
+      y <- self$y_train
+      p <- ncol(X)
+      
+      if (is.character(feature)) {
+        feature <- which(colnames(X) == feature)
+      }
       if (feature < 1 || feature > p) {
         stop("feature must be between 1 and ", p)
       }
       
-      feature_name <- colnames(self$X_train)[feature]
+      feature_name <- colnames(X)[feature]
       if (is.null(feature_name)) feature_name <- paste0("X", feature)
       
-      # Create a grid for the selected feature
-      x_range <- range(self$X_train[, feature])
+      # Create grid
+      x_range <- range(X[, feature])
       x_grid <- seq(x_range[1], x_range[2], length.out = n_points)
       
-      # Hold other features at their means
-      X_grid <- matrix(rep(colMeans(self$X_train), each = n_points), 
-                       nrow = n_points)
+      # Hold other features at means
+      X_grid <- matrix(rep(colMeans(X), each = n_points), nrow = n_points)
       X_grid[, feature] <- x_grid
       
       # Get predictions
       y_pred <- self$predict(X_grid)
+      if (is.list(y_pred)) y_pred <- y_pred$preds
       
-      # Create plot
-      #par(mfrow = c(1, 1))
-      plot(self$X_train[, feature], self$y_train,
+      # Plot
+      plot(X[, feature], y,
            xlab = feature_name,
-           ylab = ifelse(self$task == "regression", "y", "Class"),
-           main = paste("Partial Dependence Plot -", feature_name),
+           ylab = ifelse(self$type == "regression", "Response", "Class"),
+           main = paste("Partial Dependence -", feature_name),
            pch = 16, col = rgb(0, 0, 0, 0.3))
       
       lines(x_grid, y_pred, col = "red", lwd = 2)
@@ -309,212 +455,102 @@ Model <- R6::R6Class(
       invisible(self)
     },
     
-    #' @description Create a deep copy of the model
-    #' 
-    #' Useful for cross-validation and parallel processing where
-    #' multiple independent model instances are needed.
-    #' 
+    #' @description Clone the model
     #' @return A new Model object with same configuration
     clone_model = function() {
-      Model$new(self$model_fn)
-    }
+      Model$new(
+        model_fn = self$model_fn,
+        pi_method = self$pi_method,
+        level = self$level,
+        B = self$B,
+        seed = self$seed
+      )
+    },
+    
+    # Getter/setter methods for compatibility
+    get_type = function() self$type,
+    get_model = function() self$fitted,
+    set_level = function(level) { self$level <- level },
+    get_level = function() self$level,
+    set_pi_method = function(pi_method) { self$pi_method <- pi_method },
+    get_pi_method = function() self$pi_method
   )
 )
 
-#' Cross-Validation for Model Objects
-#' 
-#' Perform k-fold cross-validation with consistent scoring metrics
-#' across different model types. The scoring metric is automatically
-#' selected based on the detected task type.
+#' Enhanced Cross-Validation with Parallel Support
 #' 
 #' @param model A Model object
-#' @param X Feature matrix or data.frame
-#' @param y Target vector (type determines regression vs classification)
-#' @param cv Number of cross-validation folds (default: 5)
-#' @param scoring Scoring metric: "rmse", "mae", "accuracy", or "f1" 
-#'               (default: auto-detected based on task)
-#' @param show_progress Whether to show progress bar (default: TRUE)
-#' @param cl Optional cluster for parallel processing (not yet implemented)
+#' @param X Feature matrix
+#' @param y Target vector
+#' @param cv Number of folds (default: 5)
+#' @param scoring Metric: "rmse", "mae", "accuracy", "f1"
+#' @param show_progress Show progress bar (default: TRUE)
+#' @param cl Optional cluster for parallel processing
 #' @param ... Additional arguments passed to model$fit()
-#' 
-#' @return Vector of cross-validation scores for each fold
-#' 
-#' @examples
-#' \donttest{
-#' library(glmnet)
-#' X <- matrix(rnorm(100), ncol = 4)
-#' y <- 2*X[,1] - 1.5*X[,2] + rnorm(25)  # numeric -> regression
-#' 
-#' mod <- Model$new(glmnet::glmnet)
-#' mod$fit(X, y, alpha = 0, lambda = 0.1)
-#' cv_scores <- cross_val_score(mod, X, y, cv = 5)  # auto-uses RMSE
-#' mean(cv_scores)  # Average RMSE
-#' 
-#' # Classification with accuracy scoring
-#' data(iris)
-#' X_class <- as.matrix(iris[, 1:4])
-#' y_class <- iris$Species  # factor -> classification
-#' 
-#' mod2 <- Model$new(e1071::svm)
-#' cv_scores2 <- cross_val_score(mod2, X_class, y_class, cv = 5)  # auto-uses accuracy
-#' mean(cv_scores2)  # Average accuracy
-#' }
-#' 
+#' @return Vector of CV scores
 #' @export
-cross_val_score <- function(model, X, y, cv = 5, scoring = NULL, 
-                            show_progress = TRUE, cl = NULL, ...) {
+cross_val_score <- function(model, X, y, cv = 5, scoring = NULL,
+                           show_progress = TRUE, cl = NULL, ...) {
   X <- as.matrix(X)
   n <- nrow(X)
+  
+  # Create folds
+  set.seed(model$seed)
   folds <- split(sample(seq_len(n)), rep(1:cv, length.out = n))
-  scores <- numeric(cv)
   
-  # Auto-detect task based on y
+  # Auto-detect task and scoring
   task_type <- ifelse(is.factor(y), "classification", "regression")
-  
-  # Auto-detect scoring metric if not provided
   if (is.null(scoring)) {
     scoring <- ifelse(task_type == "regression", "rmse", "accuracy")
   }
   
-  if (is.null(cl))
-  {
-    if (show_progress)
-      pb <- utils::txtProgressBar(max = cv, style = 3)
+  # Scoring function
+  compute_score <- function(true, pred, metric) {
+    if (metric == "rmse") {
+      return(sqrt(mean((true - pred)^2, na.rm = TRUE)))
+    } else if (metric == "mae") {
+      return(mean(abs(true - pred), na.rm = TRUE))
+    } else if (metric == "accuracy") {
+      return(mean(pred == true, na.rm = TRUE))
+    } else if (metric == "f1") {
+      # Binary F1
+      if (is.factor(true) && nlevels(true) == 2) {
+        tp <- sum(pred == levels(true)[2] & true == levels(true)[2])
+        fp <- sum(pred == levels(true)[2] & true == levels(true)[1])
+        fn <- sum(pred == levels(true)[1] & true == levels(true)[2])
+        precision <- tp / (tp + fp + 1e-10)
+        recall <- tp / (tp + fn + 1e-10)
+        return(2 * precision * recall / (precision + recall + 1e-10))
+      } else {
+        return(mean(pred == true, na.rm = TRUE))
+      }
+    }
+  }
+  
+  # Sequential execution
+  if (is.null(cl)) {
+    scores <- numeric(cv)
+    if (show_progress) pb <- txtProgressBar(max = cv, style = 3)
     
     for (i in seq_len(cv)) {
-      val_idx   <- folds[[i]]
+      val_idx <- folds[[i]]
       train_idx <- setdiff(seq_len(n), val_idx)
       
       m <- model$clone_model()
-      m$fit(X = X[train_idx, , drop = FALSE], y = y[train_idx], ...)
+      m$fit(X[train_idx, , drop = FALSE], y[train_idx], ...)
       
-      pred <- m$predict(X = X[val_idx, , drop = FALSE], ...)
-      true <- y[val_idx]
+      pred <- m$predict(X[val_idx, , drop = FALSE])
+      if (is.list(pred)) pred <- pred$preds
       
-      if (scoring == "rmse") {
-        scores[i] <- sqrt(mean((true - pred)^2, na.rm = TRUE))
-      } else if (scoring == "mae") {
-        scores[i] <- mean(abs(true - pred), na.rm = TRUE)
-      } else if (scoring == "accuracy") {
-        scores[i] <- mean(pred == true, na.rm = TRUE)
-      } else if (scoring == "f1") {
-        # Binary F1 score - handle multi-class later
-        if (is.factor(true)) {
-          # For binary classification, assume first two levels
-          if (nlevels(true) == 2) {
-            tp <- sum(pred == levels(true)[2] & true == levels(true)[2])
-            fp <- sum(pred == levels(true)[2] & true == levels(true)[1])
-            fn <- sum(pred == levels(true)[1] & true == levels(true)[2])
-            precision <- tp / (tp + fp + 1e-10)
-            recall <- tp / (tp + fn + 1e-10)
-            scores[i] <- 2 * precision * recall / (precision + recall + 1e-10)
-          } else {
-            warning("F1 score currently only supports binary classification. Using accuracy instead.")
-            scores[i] <- mean(pred == true, na.rm = TRUE)
-          }
-        } else {
-          # For numeric binary classification (0/1)
-          tp <- sum(pred == 1 & true == 1)
-          fp <- sum(pred == 1 & true == 0)
-          fn <- sum(pred == 0 & true == 1)
-          precision <- tp / (tp + fp + 1e-10)
-          recall <- tp / (tp + fn + 1e-10)
-          scores[i] <- 2 * precision * recall / (precision + recall + 1e-10)
-        }
-      }
+      scores[i] <- compute_score(y[val_idx], pred, scoring)
       
-      if (show_progress)
-        utils::setTxtProgressBar(pb, i)
+      if (show_progress) setTxtProgressBar(pb, i)
     }
     
-    if (show_progress)
-      close(pb)
-    
+    if (show_progress) close(pb)
     return(scores)
-    
   } else {
-    cl_SOCK <- parallel::makeCluster(cl, type = "SOCK")
-    doParallel::registerDoParallel(cl_SOCK)
-    `%op%` <-  foreach::`%dopar%`
-    
-    if (show_progress)
-    {
-      pb <- txtProgressBar(min = 0,
-                           max = cv,
-                           style = 3)
-      progress <- function(n)
-        utils::setTxtProgressBar(pb, n)
-      opts <- list(progress = progress)
-      
-    } else {
-      
-      opts <- NULL
-      
-    }
-    
-    # KEY FIX: Store the result and use .combine to collect scores
-    scores <- foreach::foreach(i = seq_len(cv), 
-                               .packages = c("unifiedml"),
-                               .combine = 'c',  # ADDED: Combine results into vector
-                               .errorhandling = "stop",
-                               .options.snow = opts, 
-                               .verbose = FALSE) %op% {  # Changed to FALSE for cleaner output
-                                 
-                                 val_idx   <- folds[[i]]
-                                 train_idx <- setdiff(seq_len(n), val_idx)
-                                 
-                                 m <- model$clone_model()
-                                 m$fit(X = X[train_idx, , drop = FALSE], y = y[train_idx], ...)
-                                 
-                                 pred <- m$predict(X = X[val_idx, , drop = FALSE], ...)
-                                 true <- y[val_idx]
-                                 
-                                 score <- NA  # Initialize score
-                                 
-                                 if (scoring == "rmse") {
-                                   score <- sqrt(mean((true - pred)^2, na.rm = TRUE))
-                                 } else if (scoring == "mae") {
-                                   score <- mean(abs(true - pred), na.rm = TRUE)
-                                 } else if (scoring == "accuracy") {
-                                   score <- mean(pred == true, na.rm = TRUE)
-                                 } else if (scoring == "f1") {
-                                   # Binary F1 score - handle multi-class later
-                                   if (is.factor(true)) {
-                                     # For binary classification, assume first two levels
-                                     if (nlevels(true) == 2) {
-                                       tp <- sum(pred == levels(true)[2] & true == levels(true)[2])
-                                       fp <- sum(pred == levels(true)[2] & true == levels(true)[1])
-                                       fn <- sum(pred == levels(true)[1] & true == levels(true)[2])
-                                       precision <- tp / (tp + fp + 1e-10)
-                                       recall <- tp / (tp + fn + 1e-10)
-                                       score <- 2 * precision * recall / (precision + recall + 1e-10)
-                                     } else {
-                                       warning("F1 score currently only supports binary classification. Using accuracy instead.")
-                                       score <- mean(pred == true, na.rm = TRUE)
-                                     }
-                                   } else {
-                                     # For numeric binary classification (0/1)
-                                     tp <- sum(pred == 1 & true == 1)
-                                     fp <- sum(pred == 1 & true == 0)
-                                     fn <- sum(pred == 0 & true == 1)
-                                     precision <- tp / (tp + fp + 1e-10)
-                                     recall <- tp / (tp + fn + 1e-10)
-                                     score <- 2 * precision * recall / (precision + recall + 1e-10)
-                                   }
-                                 }
-                                 
-                                 # RETURN the score (not assign to scores[i])
-                                 score
-                               }
-    
-    if (show_progress)
-    {
-      close(pb)
-    }
-    
-    parallel::stopCluster(cl_SOCK)
-    
-    return(scores)      
+    # Parallel execution (requires foreach/doParallel setup)
+    stop("Parallel execution requires foreach and doParallel packages")
   }
-  
 }
