@@ -3,6 +3,7 @@
 > A Unified Machine Learning Interface for R
 
 [![](https://cranlogs.r-pkg.org/badges/unifiedml)](https://cran.r-project.org/package=unifiedml)
+[![](https://cranlogs.r-pkg.org/badges/grand-total/unifiedml)](https://cranlogs.r-pkg.org/badges/grand-total/unifiedml)
 [![Documentation](https://img.shields.io/badge/documentation-is_here-green)](http://docs.techtonique.net/unifiedml/index.html)
 
 ## Overview
