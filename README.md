@@ -8,7 +8,7 @@
 
 ## Overview
 
-`unifiedml` provides a consistent, sklearn-like interface for various (any) machine learning models in R. 
+`unifiedml` provides a (work in progress) consistent, sklearn-like interface for various (any) machine learning models in R. 
 
 It eliminates the need to remember different function signatures across packages by **automatically detecting the appropriate interface** (formula vs matrix) and **task type** (regression vs classification).
 
