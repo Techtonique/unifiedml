@@ -38,7 +38,6 @@ cmod2$fit(Xc, yc, kernel = "radial", probability = TRUE, cal_size = 0.3)
 sets <- cmod2$predict(Xc[1:5, ], type = "set")
 print(sets)
 }
-
 }
 \author{
 Your Name

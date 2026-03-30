@@ -51,7 +51,6 @@ NULL
 #' sets <- cmod2$predict(Xc[1:5, ], type = "set")
 #' print(sets)
 #' }
-#'
 #' @export
 ConformalModel <- R6::R6Class(
   "ConformalModel",
