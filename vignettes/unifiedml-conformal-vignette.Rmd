@@ -1,38 +1,27 @@
 ---
-title: "Introduction to R package `unifiedml`"
+title: "Introduction to R package `unifiedml` for conformal prediction"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Introduction to R package `unifiedml`}
+  %\VignetteIndexEntry{Introduction to R package `unifiedml` for conformal prediction}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
+# Example 1
+
 ```{r fig.width=7}
-library(unifiedml) # this package
+library(unifiedml)
 library(glmnet)
-library(e1071)
 
- # Regression example
+# Regression example with automatic splitting
+set.seed(123)
+X <- matrix(rnorm(200), ncol = 4)
+y <- 2*X[,1] - 1.5*X[,2] + rnorm(50)
 
- set.seed(123)
- X <- matrix(rnorm(200), ncol = 4)
- y <- 2*X[,1] - 1.5*X[,2] + rnorm(50)
-
- cmod <- ConformalModel$new(glmnet::glmnet, alpha = 0.1)
- cmod$fit(X, y, alpha = 0, lambda = 0.1, cal_size = 0.3)
- preds <- cmod$predict(X[1:5, ])
- print(preds)
-
- # Classification example
- data(iris)
- iris_bin <- iris[iris$Species %in% c("setosa", "versicolor"), ]
- Xc <- as.matrix(iris_bin[, 1:4])
- yc <- as.factor(as.character(iris_bin$Species))
-
- cmod2 <- ConformalModel$new(e1071::svm, alpha = 0.1)
- cmod2$fit(Xc, yc, kernel = "radial", probability = TRUE, cal_size = 0.3)
- sets <- cmod2$predict(Xc[1:5, ], type = "set")
- print(sets)
+cmod <- ConformalModel$new(glmnet::glmnet, alpha = 0.1)
+cmod$fit(X, y, alpha = 0, lambda = 0.1, cal_size = 0.3, seed = 123)
+preds <- cmod$predict(X[1:5, ])
+print(preds)
 ```
 
 # Example 2
@@ -41,7 +30,6 @@ library(e1071)
 library(unifiedml)
 library(glmnet)
 
-# Set seed for reproducibility
 set.seed(123)
 
 # Generate synthetic data
@@ -53,9 +41,7 @@ y <- 2 * X[, 1] - 1.5 * X[, 2] + rnorm(n)
 # Split data into training (50%), calibration (25%), and test (25%)
 n_train <- floor(0.5 * n)
 n_cal <- floor(0.25 * n)
-n_test <- n - n_train - n_cal
 
-# Create indices
 indices <- sample(seq_len(n))
 train_idx <- indices[1:n_train]
 cal_idx <- indices[(n_train + 1):(n_train + n_cal)]
@@ -91,7 +77,7 @@ cmod$print()
 test_predictions <- cmod$predict(X_test, type = "interval")
 head(test_predictions)
 
-# Evaluate coverage on test set (only now do we look at test data!)
+# Evaluate coverage on test set
 evaluation <- cmod$evaluate(X_test, y_test)
 cat("\n=== Coverage Evaluation ===\n")
 cat(sprintf("Target coverage: %.1f%%\n", 100 * (1 - cmod$alpha)))
@@ -108,15 +94,16 @@ cmod$plot_intervals(X_test, y_test)
 # Example 3
 
 ```{r, fig.width=7}
-library(e1071)
+library(randomForest)
 
 # Load and prepare data
 data(iris)
 # Use binary classification for simplicity
 iris_bin <- iris[iris$Species %in% c("setosa", "versicolor"), ]
 Xc <- as.matrix(iris_bin[, 1:4])
-yc <- iris_bin$Species
+yc <- as.factor(as.character(iris_bin$Species))
 
+set.seed(123)
 n <- nrow(Xc)
 
 # Split data into training (50%), calibration (25%), and test (25%)
@@ -138,8 +125,8 @@ y_cal_cls <- yc[cal_idx]
 X_test_cls <- Xc[test_idx, ]
 y_test_cls <- yc[test_idx]
 
-# Create conformal model
-cmod2 <- ConformalModel$new(e1071::svm, alpha = 0.1)
+# Create conformal model with randomForest
+cmod2 <- ConformalModel$new(randomForest::randomForest, alpha = 0.1)
 
 # Fit using training and calibration sets
 cmod2$fit_calibrate(
@@ -147,8 +134,8 @@ cmod2$fit_calibrate(
   y_train = y_train_cls,
   X_calib = X_cal_cls,
   y_calib = y_cal_cls,
-  kernel = "radial",
-  probability = TRUE  # Important for probability predictions
+  ntree = 100,
+  importance = TRUE
 )
 
 # Print model summary
@@ -159,7 +146,7 @@ prediction_sets <- cmod2$predict(X_test_cls, type = "set")
 
 # Show first 10 prediction sets
 cat("\nFirst 10 prediction sets:\n")
-for (i in 1:10) {
+for (i in 1:min(10, length(prediction_sets))) {
   cat(sprintf("Sample %2d: True = %-10s | Set = {%s}\n",
               i, as.character(y_test_cls[i]),
               paste(prediction_sets[[i]], collapse = ", ")))
@@ -167,10 +154,12 @@ for (i in 1:10) {
 
 # Get point predictions
 point_predictions <- cmod2$predict(X_test_cls, type = "point")
+cat("\nConfusion Matrix:\n")
+print(table(Actual = y_test_cls, Predicted = point_predictions))
 
 # Get probabilities
 probabilities <- cmod2$predict(X_test_cls, type = "prob")
-head(probabilities)
+head(probabilities, 10)
 
 # Evaluate coverage on test set
 evaluation_cls <- cmod2$evaluate(X_test_cls, y_test_cls)
@@ -178,8 +167,8 @@ cat("\n=== Coverage Evaluation ===\n")
 cat(sprintf("Target coverage: %.1f%%\n", 100 * (1 - cmod2$alpha)))
 cat(sprintf("Empirical coverage: %.1f%%\n", 100 * evaluation_cls$coverage))
 cat(sprintf("Mean set size: %.2f\n", evaluation_cls$mean_set_size))
-cat(sprintf("Set size distribution:\n"))
-table(evaluation_cls$set_sizes)
+cat("\nSet size distribution:\n")
+print(table(evaluation_cls$set_sizes))
 
 # Visualize score distribution
 cmod2$plot_scores()
