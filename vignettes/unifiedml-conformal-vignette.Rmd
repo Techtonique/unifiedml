@@ -27,12 +27,195 @@ library(e1071)
  data(iris)
  iris_bin <- iris[iris$Species %in% c("setosa", "versicolor"), ]
  Xc <- as.matrix(iris_bin[, 1:4])
- yc <- iris_bin$Species
+ yc <- as.factor(as.character(iris_bin$Species))
 
  cmod2 <- ConformalModel$new(e1071::svm, alpha = 0.1)
  cmod2$fit(Xc, yc, kernel = "radial", probability = TRUE, cal_size = 0.3)
  sets <- cmod2$predict(Xc[1:5, ], type = "set")
  print(sets)
+```
+
+# Example 2
+
+```{r, fig.width=7}
+library(unifiedml)
+library(glmnet)
+
+# Set seed for reproducibility
+set.seed(123)
+
+# Generate synthetic data
+n <- 200
+p <- 4
+X <- matrix(rnorm(n * p), ncol = p, dimnames = list(NULL, paste0("X", 1:p)))
+y <- 2 * X[, 1] - 1.5 * X[, 2] + rnorm(n)
+
+# Split data into training (50%), calibration (25%), and test (25%)
+n_train <- floor(0.5 * n)
+n_cal <- floor(0.25 * n)
+n_test <- n - n_train - n_cal
+
+# Create indices
+indices <- sample(seq_len(n))
+train_idx <- indices[1:n_train]
+cal_idx <- indices[(n_train + 1):(n_train + n_cal)]
+test_idx <- indices[(n_train + n_cal + 1):n]
+
+# Create the splits
+X_train <- X[train_idx, ]
+y_train <- y[train_idx]
+
+X_cal <- X[cal_idx, ]
+y_cal <- y[cal_idx]
+
+X_test <- X[test_idx, ]
+y_test <- y[test_idx]
+
+# Create conformal model
+cmod <- ConformalModel$new(glmnet::glmnet, alpha = 0.1)
+
+# Fit using training and calibration sets
+cmod$fit_calibrate(
+  X_train = X_train,
+  y_train = y_train,
+  X_calib = X_cal,
+  y_calib = y_cal,
+  alpha = 0,      # glmnet alpha parameter (0 = ridge)
+  lambda = 0.1    # regularization parameter
+)
+
+# Print model summary
+cmod$print()
+
+# Make predictions on test set
+test_predictions <- cmod$predict(X_test, type = "interval")
+head(test_predictions)
+
+# Evaluate coverage on test set (only now do we look at test data!)
+evaluation <- cmod$evaluate(X_test, y_test)
+cat("\n=== Coverage Evaluation ===\n")
+cat(sprintf("Target coverage: %.1f%%\n", 100 * (1 - cmod$alpha)))
+cat(sprintf("Empirical coverage: %.1f%%\n", 100 * evaluation$coverage))
+cat(sprintf("Mean interval width: %.3f\n", evaluation$mean_width))
+
+# Visualize calibration scores
+cmod$plot_scores()
+
+# Visualize prediction intervals on test data
+cmod$plot_intervals(X_test, y_test)
+```
+
+# Example 3
+
+```{r, fig.width=7}
+library(e1071)
+
+# Load and prepare data
+data(iris)
+# Use binary classification for simplicity
+iris_bin <- iris[iris$Species %in% c("setosa", "versicolor"), ]
+Xc <- as.matrix(iris_bin[, 1:4])
+yc <- iris_bin$Species
+
+n <- nrow(Xc)
+
+# Split data into training (50%), calibration (25%), and test (25%)
+n_train <- floor(0.5 * n)
+n_cal <- floor(0.25 * n)
+
+indices <- sample(seq_len(n))
+train_idx <- indices[1:n_train]
+cal_idx <- indices[(n_train + 1):(n_train + n_cal)]
+test_idx <- indices[(n_train + n_cal + 1):n]
+
+# Create the splits
+X_train_cls <- Xc[train_idx, ]
+y_train_cls <- yc[train_idx]
+
+X_cal_cls <- Xc[cal_idx, ]
+y_cal_cls <- yc[cal_idx]
+
+X_test_cls <- Xc[test_idx, ]
+y_test_cls <- yc[test_idx]
+
+# Create conformal model
+cmod2 <- ConformalModel$new(e1071::svm, alpha = 0.1)
+
+# Fit using training and calibration sets
+cmod2$fit_calibrate(
+  X_train = X_train_cls,
+  y_train = y_train_cls,
+  X_calib = X_cal_cls,
+  y_calib = y_cal_cls,
+  kernel = "radial",
+  probability = TRUE  # Important for probability predictions
+)
+
+# Print model summary
+cmod2$print()
+
+# Get prediction sets on test data
+prediction_sets <- cmod2$predict(X_test_cls, type = "set")
+
+# Show first 10 prediction sets
+cat("\nFirst 10 prediction sets:\n")
+for (i in 1:10) {
+  cat(sprintf("Sample %2d: True = %-10s | Set = {%s}\n",
+              i, as.character(y_test_cls[i]),
+              paste(prediction_sets[[i]], collapse = ", ")))
+}
+
+# Get point predictions
+point_predictions <- cmod2$predict(X_test_cls, type = "point")
+
+# Get probabilities
+probabilities <- cmod2$predict(X_test_cls, type = "prob")
+head(probabilities)
+
+# Evaluate coverage on test set
+evaluation_cls <- cmod2$evaluate(X_test_cls, y_test_cls)
+cat("\n=== Coverage Evaluation ===\n")
+cat(sprintf("Target coverage: %.1f%%\n", 100 * (1 - cmod2$alpha)))
+cat(sprintf("Empirical coverage: %.1f%%\n", 100 * evaluation_cls$coverage))
+cat(sprintf("Mean set size: %.2f\n", evaluation_cls$mean_set_size))
+cat(sprintf("Set size distribution:\n"))
+table(evaluation_cls$set_sizes)
+
+# Visualize score distribution
+cmod2$plot_scores()
+```
+
+# Example 4
+
+```{r}
+# Function to evaluate a model with conformal prediction
+evaluate_conformal_model <- function(model_fn, X_train, y_train, X_cal, y_cal, X_test, y_test, ...) {
+  cmod <- ConformalModel$new(model_fn, alpha = 0.1)
+  cmod$fit_calibrate(X_train, y_train, X_cal, y_cal, ...)
+  eval <- cmod$evaluate(X_test, y_test)
+  return(list(
+    coverage = eval$coverage,
+    mean_width = if (!is.null(eval$mean_width)) eval$mean_width else eval$mean_set_size,
+    model = cmod
+  ))
+}
+
+# Compare ridge regression and lasso
+ridge_result <- evaluate_conformal_model(
+  glmnet::glmnet, X_train, y_train, X_cal, y_cal, X_test, y_test,
+  alpha = 0, lambda = 0.1
+)
+
+lasso_result <- evaluate_conformal_model(
+  glmnet::glmnet, X_train, y_train, X_cal, y_cal, X_test, y_test,
+  alpha = 1, lambda = 0.05
+)
+
+cat("=== Model Comparison ===\n")
+cat(sprintf("Ridge  - Coverage: %.3f, Avg interval width: %.3f\n",
+            ridge_result$coverage, ridge_result$mean_width))
+cat(sprintf("Lasso  - Coverage: %.3f, Avg interval width: %.3f\n",
+            lasso_result$coverage, lasso_result$mean_width))
 ```
 
 
