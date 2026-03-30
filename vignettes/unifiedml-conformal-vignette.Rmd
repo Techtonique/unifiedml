@@ -1,0 +1,38 @@
+---
+title: "Introduction to R package `unifiedml`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Introduction to R package `unifiedml`}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r fig.width=7}
+library(unifiedml) # this package
+library(glmnet)
+library(e1071)
+
+ # Regression example
+
+ set.seed(123)
+ X <- matrix(rnorm(200), ncol = 4)
+ y <- 2*X[,1] - 1.5*X[,2] + rnorm(50)
+
+ cmod <- ConformalModel$new(glmnet::glmnet, alpha = 0.1)
+ cmod$fit(X, y, alpha = 0, lambda = 0.1, cal_size = 0.3)
+ preds <- cmod$predict(X[1:5, ])
+ print(preds)
+
+ # Classification example
+ data(iris)
+ iris_bin <- iris[iris$Species %in% c("setosa", "versicolor"), ]
+ Xc <- as.matrix(iris_bin[, 1:4])
+ yc <- iris_bin$Species
+
+ cmod2 <- ConformalModel$new(e1071::svm, alpha = 0.1)
+ cmod2$fit(Xc, yc, kernel = "radial", probability = TRUE, cal_size = 0.3)
+ sets <- cmod2$predict(Xc[1:5, ], type = "set")
+ print(sets)
+```
+
+
