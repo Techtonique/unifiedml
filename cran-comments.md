@@ -9,3 +9,7 @@
 * There are no citations, it's a (trying-to-be-clever) wrapper 
 * The NOTE about 'unable to verify current time' is system-related and harmless
 * The HTML validation notes are standard for R documentation and don't affect functionality
+
+## Changes
+* Remove `type` from predict
+* Fix binary classification in vignettes

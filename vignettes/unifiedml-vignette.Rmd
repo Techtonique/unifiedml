@@ -34,7 +34,7 @@ print(head(mod1$predict(X)))
 cat("\n")
 mod1$summary()
 mod1$plot(feature = 1)
-(cv1 <- cross_val_score(mod1, X, y, cv = 5L))  # Auto-uses RMSE
+(cv1 <- cross_val_score(mod1, X, y, cv = 5L))  # Auto-uses RMSE 
 cat("\nMean RMSE:", mean(cv1), "\n\n")
 
 # randomForest regression
@@ -58,7 +58,35 @@ data(iris)
 cat("3. Binary Classification with Factor Response\n")
 iris_binary <- iris[iris$Species %in% c("setosa", "versicolor"), ]
 X_binary <- as.matrix(iris_binary[, 1:4])
-y_binary <- iris_binary$Species  # factor → classification
+y_binary <- as.factor(as.character(iris_binary$Species))  # factor → classification
+
+
+mod4 <- Model$new(randomForest::randomForest)  # No task parameter!
+mod4$fit(X_binary, y_binary, ntree = 50)
+mod4$print()
+(cv4 <- cross_val_score(mod4, X_binary, y_binary, cv = 5L))  # Auto-uses accuracy
+cat("\nMean Accuracy:", mean(cv4), "\n")
+
+
+mod4 <- Model$new(e1071::svm)  # No task parameter!
+mod4$fit(X_binary, y_binary, ntree = 50)
+mod4$print()
+(cv4 <- cross_val_score(mod4, X_binary, y_binary, cv = 5L))  # Auto-uses accuracy
+cat("\nMean Accuracy:", mean(cv4), "\n")
+
+y_binary_numeric <- as.numeric(y_binary)
+mod4 <- Model$new(glmnet::glmnet)  # No task parameter!
+mod4$fit(X_binary, y_binary_numeric, family="binomial")
+mod4$print()
+(cv4 <- cross_val_score(mod4, X_binary, y_binary_numeric, cv = 5L))  # Auto-uses accuracy
+cat("\nMean Accuracy:", mean(cv4), "\n")
+
+y_binary_numeric <- as.numeric(y_binary)
+mod4 <- Model$new(glmnet::glmnet)  # No task parameter!
+mod4$fit(X_binary, y_binary_numeric, family="multinomial")
+mod4$print()
+(cv4 <- cross_val_score(mod4, X_binary, y_binary_numeric, cv = 5L))  # Auto-uses accuracy
+cat("\nMean Accuracy:", mean(cv4), "\n")
 
 # Multi-class classification
 cat("4. Multi-class Classification\n")
@@ -66,6 +94,13 @@ X_multi <- as.matrix(iris[, 1:4])
 y_multi <- iris$Species  # factor with 3 levels → multi-class classification
 
 mod4 <- Model$new(randomForest::randomForest)  # No task parameter!
+mod4$fit(X_multi, y_multi, ntree = 50)
+mod4$print()
+(cv4 <- cross_val_score(mod4, X_multi, y_multi, cv = 5L))  # Auto-uses accuracy
+cat("\nMean Accuracy:", mean(cv4), "\n")
+
+
+mod4 <- Model$new(e1071::svm)  # No task parameter!
 mod4$fit(X_multi, y_multi, ntree = 50)
 mod4$print()
 (cv4 <- cross_val_score(mod4, X_multi, y_multi, cv = 5L))  # Auto-uses accuracy
