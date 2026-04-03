@@ -60,6 +60,34 @@ iris_binary <- iris[iris$Species %in% c("setosa", "versicolor"), ]
 X_binary <- as.matrix(iris_binary[, 1:4])
 y_binary <- as.factor(as.character(iris_binary$Species))  # factor → classification
 
+
+mod4 <- Model$new(randomForest::randomForest)  # No task parameter!
+mod4$fit(X_binary, y_binary, ntree = 50)
+mod4$print()
+(cv4 <- cross_val_score(mod4, X_binary, y_binary, cv = 5L))  # Auto-uses accuracy
+cat("\nMean Accuracy:", mean(cv4), "\n")
+
+
+mod4 <- Model$new(e1071::svm)  # No task parameter!
+mod4$fit(X_binary, y_binary, ntree = 50)
+mod4$print()
+(cv4 <- cross_val_score(mod4, X_binary, y_binary, cv = 5L))  # Auto-uses accuracy
+cat("\nMean Accuracy:", mean(cv4), "\n")
+
+y_binary_numeric <- as.numeric(y_binary)
+mod4 <- Model$new(glmnet::glmnet)  # No task parameter!
+mod4$fit(X_binary, y_binary_numeric, family="binomial")
+mod4$print()
+(cv4 <- cross_val_score(mod4, X_binary, y_binary_numeric, cv = 5L))  # Auto-uses accuracy
+cat("\nMean Accuracy:", mean(cv4), "\n")
+
+y_binary_numeric <- as.numeric(y_binary)
+mod4 <- Model$new(glmnet::glmnet)  # No task parameter!
+mod4$fit(X_binary, y_binary_numeric, family="multinomial")
+mod4$print()
+(cv4 <- cross_val_score(mod4, X_binary, y_binary_numeric, cv = 5L))  # Auto-uses accuracy
+cat("\nMean Accuracy:", mean(cv4), "\n")
+
 # Multi-class classification
 cat("4. Multi-class Classification\n")
 X_multi <- as.matrix(iris[, 1:4])
