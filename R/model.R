@@ -130,29 +130,23 @@ Model <- R6::R6Class(
     
     #' @description Generate predictions from fitted model
     #' @param X Feature matrix for prediction
-    #' @param type Type of prediction ("response", "class", "probabilities")
     #' @param ... Additional arguments passed to predict function
     #' @return Vector of predictions
-    predict = function(X, type = NULL, ...) {
+    predict = function(X, ...) {
       if (is.null(self$fitted)) stop("Model not fitted.")
       X <- as.matrix(X)
-      
-      # Set default type based on task
-      if (is.null(type)) {
-        type <- ifelse(self$task == "classification", "response", "response")
-      }
       
       # 1. Try newdata (formula models)
       df <- data.frame(X)
       pred <- tryCatch(
-        predict(self$fitted, newdata = df, type = type, ...),
+        predict(self$fitted, newdata = df, ...),
         error = function(e) NULL
       )
       
       # 2. Fallback: newx (matrix models)
       if (is.null(pred)) {
         pred <- tryCatch(
-          predict(self$fitted, newx = X, type = type, ...),
+          predict(self$fitted, newx = X, ...),
           error = function(e) {
             stop("Predict failed with both newdata and newx.")
           }
@@ -164,7 +158,7 @@ Model <- R6::R6Class(
       if (is.list(pred)) pred <- unlist(pred)
       
       # For classification, ensure factors are returned as original levels if possible
-      if (self$task == "classification" && type == "class" && is.factor(self$y_train)) {
+      if (self$task == "classification" && is.factor(self$y_train)) {
         if (is.numeric(pred)) {
           # Convert numeric predictions back to factor levels
           pred <- factor(levels(self$y_train)[pred + 1], levels = levels(self$y_train))
