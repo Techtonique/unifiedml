@@ -174,12 +174,13 @@ print(table(evaluation_cls$set_sizes))
 cmod2$plot_scores()
 ```
 
+
 # Example 4
 
 ```{r}
 # Function to evaluate a model with conformal prediction
 evaluate_conformal_model <- function(model_fn, X_train, y_train, X_cal, y_cal, X_test, y_test, ...) {
-  cmod <- ConformalModel$new(model_fn, alpha = 0.1)
+  cmod <- ConformalModel$new(model_fn, alpha = 0.05)
   cmod$fit_calibrate(X_train, y_train, X_cal, y_cal, ...)
   eval <- cmod$evaluate(X_test, y_test)
   return(list(
