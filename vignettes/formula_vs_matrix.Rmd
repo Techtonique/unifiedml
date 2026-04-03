@@ -1,0 +1,91 @@
+---
+title: "Matrix or Formula interface"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Matrix or Formula interface}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r}
+library(unifiedml)
+```
+
+```{r}
+# Example 1: lm with matrix interface (including factors)
+demo_lm_matrix <- function() {
+  cat("\n=== Example 1: lm with matrix interface ===\n")
+  
+  lm_matrix <- unifiedml::formula_to_matrix(stats::lm)  # Uses generic predict()
+  
+  # Create data with factor and numeric columns
+  X <- data.frame(
+    wt = mtcars$wt,
+    hp = mtcars$hp,
+    cyl = factor(mtcars$cyl)
+  )
+  y <- mtcars$mpg
+  weights <- rep(1, nrow(X))
+  
+  model <- lm_matrix$fit(X, y, weights = weights)
+  preds <- lm_matrix$predict(model, X[1:5, ])
+  
+  cat("Predictions:\n")
+  print(preds)
+  cat("\nCoefficients:\n")
+  print(coef(model))
+}
+
+# Example 2: glmnet with formula interface (with factors)
+demo_glmnet_formula <- function() {
+  cat("\n=== Example 2: glmnet with formula interface ===\n")
+  
+  if (!requireNamespace("glmnet", quietly = TRUE)) {
+    cat("glmnet package not installed, skipping example\n")
+    return(invisible(NULL))
+  }
+  
+  glmnet_formula <- unifiedml::matrix_to_formula(
+    fit_func = glmnet::glmnet,
+    predict_func = function(model, newX, ...) {
+      # Wrapper to provide default s parameter
+      glmnet::predict.glmnet(model, newx = newX, s = 0.01, ...)
+    }
+  )
+  
+  # Formula with factor - model.matrix will auto-create dummies
+  model <- glmnet_formula$fit(mpg ~ wt + hp + factor(cyl), data = mtcars)
+  preds <- glmnet_formula$predict(model, newdata = mtcars[1:5, ])
+  
+  cat("Predictions:\n")
+  print(preds)
+}
+
+# Example 3: Special characters in column names
+demo_special_names <- function() {
+  cat("\n=== Example 3: Column names with special characters ===\n")
+  
+  lm_matrix <- unifiedml::formula_to_matrix(lm)
+  
+  # Create problematic column names
+  X <- data.frame(
+    `x-1` = mtcars$wt,      # Dash
+    `a:b` = mtcars$hp,       # Colon
+    `log(x)` = log(mtcars$disp),  # Parentheses
+    check.names = FALSE
+  )
+  y <- mtcars$mpg
+  
+  model <- lm_matrix$fit(X, y)
+  preds <- lm_matrix$predict(model, X[1:3, ])
+  
+  cat("Predictions:\n")
+  print(preds)
+  cat("\nModel handled special column names correctly!\n")
+}
+
+# Run examples (uncomment to test)
+demo_lm_matrix()
+demo_glmnet_formula()
+demo_special_names()
+```

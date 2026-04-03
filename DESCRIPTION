@@ -1,8 +1,8 @@
 Package: unifiedml
 Type: Package
 Title: Unified Interface for Machine Learning Models
-Version: 0.2.0
-Date: 2026-03-30
+Version: 0.2.1
+Date: 2026-04-03
 Authors@R: 
     person("T.", "Moudiki", 
            email = "thierry.moudiki@gmail.com",
