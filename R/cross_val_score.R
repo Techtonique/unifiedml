@@ -12,7 +12,7 @@
 #'               (default: auto-detected based on task)
 #' @param show_progress Whether to show progress bar (default: TRUE)
 #' @param cl Optional cluster for parallel processing (not yet implemented)
-#' @param ... Additional arguments passed to model$fit()
+#' @param ... Additional arguments passed to model$fit() or model$predict()
 #' 
 #' @return Vector of cross-validation scores for each fold
 #' 

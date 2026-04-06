@@ -152,22 +152,28 @@ Model <- R6::R6Class(
         )
       }
       
-      if (!is.null(dim(pred)) && is.numeric(pred)) # probabilities
-        return(as.matrix(pred))
+      if (is.list(pred))
+        return(pred)
+      
+      if (!is.null(dim(pred)) && (dim(pred)[2] != 1) && is.numeric(pred)) 
+      {
+        return(pred)
+      }
       
       # Clean output
       if (is.matrix(pred) && ncol(pred) == 1) pred <- drop(pred)
-      if (is.list(pred)) pred <- unlist(pred)
       
       # For classification, ensure factors are returned as original levels if possible
       if (self$task == "classification" && is.factor(self$y_train)) {
         if (is.numeric(pred)) {
           # Convert numeric predictions back to factor levels
           pred <- factor(levels(self$y_train)[pred + 1], levels = levels(self$y_train))
+        } else {
+          pred <- droplevels(as.factor(pred))
         }
       }
       
-      pred
+      drop(pred)
     },
     
     #' @description Print model information
