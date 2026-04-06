@@ -19,14 +19,14 @@
 #'
 #' @examples
 #' # matrix input
-#' X <- as.matrix(iris[, 1:4])
+#' X <- iris[, 1:4]
 #' y <- iris$Species
-#' d <- train_test_split(X, y, test_size = 0.3, seed = 42)
+#' d <- unifiedml::train_test_split(X, y, test_size = 0.3, seed = 42)
 #' dim(d$X_train)  # 105 x 4
 #' dim(d$X_test)   #  45 x 4
 #'
 #' # data.frame input
-#' d2 <- train_test_split(iris[, 1:4], iris$Species, test_size = 0.2)
+#' d2 <- unifiedml::train_test_split(iris[, 1:4], iris$Species, test_size = 0.2)
 #' is.data.frame(d2$X_train)  # TRUE
 #'
 #' @export
