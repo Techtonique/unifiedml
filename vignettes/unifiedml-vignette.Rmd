@@ -44,6 +44,8 @@ mod2$fit(X, y, ntree = 50)
 mod2$print()
 cat("\n")
 mod2$summary(h = 0.01)
+(cv2 <- cross_val_score(mod2, X, y, cv = 5L)) 
+print(head(mod2$predict(X)))
 
 # ------------------------------------------------------------
 # CLASSIFICATION EXAMPLES
@@ -64,6 +66,7 @@ y_binary <- as.factor(as.character(iris_binary$Species))  # factor → classific
 mod4 <- Model$new(randomForest::randomForest)  # No task parameter!
 mod4$fit(X_binary, y_binary, ntree = 50)
 mod4$print()
+print(head(mod4$predict(X_binary)))
 (cv4 <- cross_val_score(mod4, X_binary, y_binary, cv = 5L))  # Auto-uses accuracy
 cat("\nMean Accuracy:", mean(cv4), "\n")
 
@@ -71,6 +74,7 @@ cat("\nMean Accuracy:", mean(cv4), "\n")
 mod4 <- Model$new(e1071::svm)  # No task parameter!
 mod4$fit(X_binary, y_binary, ntree = 50)
 mod4$print()
+print(head(mod4$predict(X_binary)))
 (cv4 <- cross_val_score(mod4, X_binary, y_binary, cv = 5L))  # Auto-uses accuracy
 cat("\nMean Accuracy:", mean(cv4), "\n")
 
@@ -78,6 +82,7 @@ y_binary_numeric <- as.numeric(y_binary)
 mod4 <- Model$new(glmnet::glmnet)  # No task parameter!
 mod4$fit(X_binary, y_binary_numeric, family="binomial")
 mod4$print()
+print(head(mod4$predict(X_binary)))
 (cv4 <- cross_val_score(mod4, X_binary, y_binary_numeric, cv = 5L))  # Auto-uses accuracy
 cat("\nMean Accuracy:", mean(cv4), "\n")
 
@@ -85,6 +90,7 @@ y_binary_numeric <- as.numeric(y_binary)
 mod4 <- Model$new(glmnet::glmnet)  # No task parameter!
 mod4$fit(X_binary, y_binary_numeric, family="multinomial")
 mod4$print()
+print(head(mod4$predict(X_binary)))
 (cv4 <- cross_val_score(mod4, X_binary, y_binary_numeric, cv = 5L))  # Auto-uses accuracy
 cat("\nMean Accuracy:", mean(cv4), "\n")
 
@@ -96,6 +102,7 @@ y_multi <- iris$Species  # factor with 3 levels → multi-class classification
 mod4 <- Model$new(randomForest::randomForest)  # No task parameter!
 mod4$fit(X_multi, y_multi, ntree = 50)
 mod4$print()
+print(head(mod4$predict(X_multi)))
 (cv4 <- cross_val_score(mod4, X_multi, y_multi, cv = 5L))  # Auto-uses accuracy
 cat("\nMean Accuracy:", mean(cv4), "\n")
 
@@ -103,6 +110,7 @@ cat("\nMean Accuracy:", mean(cv4), "\n")
 mod4 <- Model$new(e1071::svm)  # No task parameter!
 mod4$fit(X_multi, y_multi, ntree = 50)
 mod4$print()
+print(head(mod4$predict(X_multi)))
 (cv4 <- cross_val_score(mod4, X_multi, y_multi, cv = 5L))  # Auto-uses accuracy
 cat("\nMean Accuracy:", mean(cv4), "\n")
 
@@ -111,6 +119,7 @@ y_multi_numeric <- as.numeric(y_multi)
 mod4 <- Model$new(glmnet::glmnet)  # No task parameter!
 mod4$fit(X_multi, y_multi_numeric, family="multinomial")
 mod4$print()
+print(head(mod4$predict(X_multi)))
 (cv4 <- cross_val_score(mod4, X_multi, y_multi_numeric, cv = 5L))  # Auto-uses accuracy
 cat("\nMean Accuracy:", mean(cv4), "\n")
 ```

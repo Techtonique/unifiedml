@@ -54,7 +54,7 @@ mean(cv_scores)  # Average RMSE
 
 # Classification with accuracy scoring
 data(iris)
-X_class <- as.matrix(iris[, 1:4])
+X_class <- iris[, 1:4]
 y_class <- iris$Species  # factor -> classification
 
 mod2 <- Model$new(e1071::svm)

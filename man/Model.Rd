@@ -30,11 +30,10 @@ predictions <- mod$predict(X)
 data(iris)
 iris_binary <- iris[iris$Species \%in\% c("setosa", "versicolor"), ]
 X_class <- as.matrix(iris_binary[, 1:4])
-y_class <- iris_binary$Species  # factor -> classification
+y_class <- droplevels(iris_binary$Species)  # factor -> classification
 
 mod2 <- Model$new(e1071::svm)
 mod2$fit(X_class, y_class, kernel = "radial")
-mod2$summary()
 
 # Cross-validation
 cv_scores <- cross_val_score(mod, X, y, cv = 5)

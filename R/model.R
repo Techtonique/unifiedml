@@ -138,16 +138,16 @@ Model <- R6::R6Class(
       # 1. Try newdata (formula models)
       df <- data.frame(X)
       pred <- tryCatch(
-        predict(self$fitted, newdata = df, ...),
+        predict(self$fitted, df, ...),
         error = function(e) NULL
       )
       
       # 2. Fallback: newx (matrix models)
       if (is.null(pred)) {
         pred <- tryCatch(
-          predict(self$fitted, newx = X, ...),
+          predict(self$fitted, X, ...),
           error = function(e) {
-            stop("Predict failed with both newdata and newx.")
+            stop("Predict failed.")
           }
         )
       }
