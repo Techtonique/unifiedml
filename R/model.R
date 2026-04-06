@@ -152,6 +152,9 @@ Model <- R6::R6Class(
         )
       }
       
+      if (!is.null(dim(pred)) && is.numeric(pred)) # probabilities
+        return(as.matrix(pred))
+      
       # Clean output
       if (is.matrix(pred) && ncol(pred) == 1) pred <- drop(pred)
       if (is.list(pred)) pred <- unlist(pred)
