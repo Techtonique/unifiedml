@@ -26,16 +26,19 @@ y <- 2*X[,1] - 1.5*X[,2] + rnorm(25)  # numeric -> regression
  
 mod <- Model$new(glmnet::glmnet)
 mod$fit(X, y, alpha = 0, lambda = 0.1)
+mod$print()
+mod$summary(h = 0.01)
 print(head(mod$predict(X)))
 (cv_scores <- cross_val_score(mod, X, y, cv = 5))  # auto-uses RMSE
 mean(cv_scores)  # Average RMSE
 
+
+# Example 2: Random Forest Regression
+cat("\n2. Random Forest Regression - Auto-detected: Regression\n")
 # randomForest regression
 set.seed(123)
 X <- MASS::Boston[, -ncol(MASS::Boston)]
 y <- MASS::Boston$medv
-
-cat("\n2. Random Forest Regression - Auto-detected: Regression\n")
 mod2 <- Model$new(randomForest::randomForest)  # No task parameter!
 mod2$fit(X, y, ntree = 50)
 mod2$print()
@@ -78,10 +81,9 @@ cat("\nMean Accuracy:", mean(cv4), "\n")
 
 
 mod4 <- Model$new(e1071::svm)  # No task parameter!
-mod4$fit(X_binary, y_binary, ntree = 50)
+mod4$fit(X_binary, y_binary)
 mod4$print()
 print(head(mod4$predict(X_binary)))
-print(head(mod4$predict(X_binary, type="prob")))
 (cv4 <- cross_val_score(mod4, X_binary, y_binary, cv = 5L))  # Auto-uses accuracy
 cat("\nMean Accuracy:", mean(cv4), "\n")
 

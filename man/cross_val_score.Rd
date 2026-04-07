@@ -31,7 +31,7 @@ cross_val_score(
 
 \item{cl}{Optional cluster for parallel processing (not yet implemented)}
 
-\item{...}{Additional arguments passed to model$fit()}
+\item{...}{Additional arguments passed to model$fit() or model$predict()}
 }
 \value{
 Vector of cross-validation scores for each fold

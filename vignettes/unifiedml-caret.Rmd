@@ -1,0 +1,39 @@
+---
+title: "Use `unifiedml` with caret without tuning"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Use `unifiedml` with caret without tuning}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r fig.width=7}
+library(unifiedml) # this package
+require(caret)
+
+set.seed(123)
+```
+
+```{r fig.width=7}
+mod <- Model$new(caret::train)
+
+iris_binary <- iris[iris$Species %in% c("setosa", "versicolor"), ]
+X_binary <- iris_binary[, 1:4]
+y_binary <- as.factor(as.character(iris_binary$Species))  # factor → classification
+
+datasplit <- unifiedml::train_test_split(X_binary, y_binary, 
+                                         test_size = 0.3, seed = 42)
+ 
+mod$fit(datasplit$X_train, datasplit$y_train,
+        method = "rf",
+        trControl = caret::trainControl(method = "none"))
+ 
+print(head(mod$predict(datasplit$X_test)))
+
+print(head(mod$predict(datasplit$X_test, type="prob")))
+
+(cv <- cross_val_score(mod, datasplit$X_train, datasplit$y_train, cv = 5L))  # Auto-uses accuracy
+cat("\nMean Accuracy:", mean(cv), "\n")
+```
+
+

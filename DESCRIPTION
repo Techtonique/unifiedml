@@ -28,7 +28,9 @@ Suggests:
     e1071,
     covr,
     spelling,
-    MASS
+    MASS,
+    nnet,
+    caret
 VignetteBuilder: knitr
 Encoding: UTF-8
 LazyData: true
