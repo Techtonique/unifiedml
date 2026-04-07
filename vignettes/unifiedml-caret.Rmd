@@ -14,26 +14,82 @@ require(caret)
 set.seed(123)
 ```
 
-```{r fig.width=7}
-mod <- Model$new(caret::train)
+# Random Forest
 
+```{r fig.width=7}
 iris_binary <- iris[iris$Species %in% c("setosa", "versicolor"), ]
 X_binary <- iris_binary[, 1:4]
 y_binary <- as.factor(as.character(iris_binary$Species))  # factor → classification
 
 datasplit <- unifiedml::train_test_split(X_binary, y_binary, 
                                          test_size = 0.3, seed = 42)
- 
+
+mod <- Model$new(caret::train) 
 mod$fit(datasplit$X_train, datasplit$y_train,
         method = "rf",
         trControl = caret::trainControl(method = "none"))
- 
 print(head(mod$predict(datasplit$X_test)))
-
 print(head(mod$predict(datasplit$X_test, type="prob")))
-
-(cv <- cross_val_score(mod, datasplit$X_train, datasplit$y_train, cv = 5L))  # Auto-uses accuracy
-cat("\nMean Accuracy:", mean(cv), "\n")
 ```
 
+# xgboost 
+
+```{r fig.width=7}
+iris_binary <- iris[iris$Species %in% c("setosa", "versicolor"), ]
+X_binary <- iris_binary[, 1:4]
+y_binary <- as.factor(as.character(iris_binary$Species))  # factor → classification
+
+datasplit <- unifiedml::train_test_split(X_binary, y_binary, 
+                                         test_size = 0.3, seed = 42)
+
+mod <- Model$new(caret::train) 
+mod$fit(datasplit$X_train, datasplit$y_train,
+        method = "xgbTree",
+  tuneGrid = data.frame(
+    nrounds = 150,      # number of trees
+    max_depth = 3,      # default max depth
+    eta = 0.3,          # learning rate
+    gamma = 0,          # minimum loss reduction
+    colsample_bytree = 1,
+    min_child_weight = 1,
+    subsample = 1),
+        trControl = caret::trainControl(method = "none"))
+print(head(mod$predict(datasplit$X_test)))
+print(head(mod$predict(datasplit$X_test, type="prob")))
+```
+
+
+# Logistic Regression with `glmnet`
+
+```{r fig.width=7}
+X <- iris[, 1:4]
+y <- iris$Species  # factor → classification
+
+datasplit <- unifiedml::train_test_split(X, y, 
+                                         test_size = 0.3, seed = 42)
+
+mod <- Model$new(caret::train) 
+mod$fit(datasplit$X_train, datasplit$y_train,
+        method = "glmnet",
+        tuneGrid = data.frame(alpha = 0,  # ridge regression
+                               lambda = 0.01),  # fixed lambda
+        trControl = caret::trainControl(method = "none"))
+print(head(mod$predict(datasplit$X_test)))
+print(head(mod$predict(datasplit$X_test, type="prob")))
+
+(cv <- cross_val_score(mod, datasplit$X_train, datasplit$y_train, cv = 5L, 
+                       method = "glmnet",
+                       tuneGrid = data.frame(alpha = 0,  # ridge regression
+                       lambda = 0.01),  # fixed lambda
+                       trControl = caret::trainControl(method = "none")))  # Auto-uses accuracy
+cat("\nMean Accuracy:", mean(cv), "\n")
+
+
+(cv <- cross_val_score(mod, datasplit$X_train, datasplit$y_train, cv = 5L, 
+                       method = "glmnet",
+                       tuneGrid = data.frame(alpha = 0.5,  # ridge regression
+                       lambda = 0.01),  # fixed lambda
+                       trControl = caret::trainControl(method = "none")))  # Auto-uses accuracy
+cat("\nMean Accuracy:", mean(cv), "\n")
+```
 
