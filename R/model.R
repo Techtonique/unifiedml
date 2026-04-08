@@ -111,8 +111,6 @@ Model <- R6::R6Class(
         self$fitted <- tryCatch(
           do.call(self$model_fn, fit_args),
           error = function(e) {
-            #misc::debug_print(X)
-            #misc::debug_print(y)
             fit_args <- c(list(x = as.matrix(X), y = as.integer(y)), list(...))
             self$fitted <- tryCatch(do.call(self$model_fn, fit_args),
                                     error = function(e) {
@@ -151,8 +149,6 @@ Model <- R6::R6Class(
           }
         )
       }
-      
-      #misc::debug_print(pred)
       
       if (is.list(pred))
         return(pred)
