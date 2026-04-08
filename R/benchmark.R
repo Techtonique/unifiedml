@@ -49,7 +49,7 @@
 #' @export
 benchmark <- function(models, X, y, cv = 5L, scoring = NULL, params = NULL, cl=NULL, show_progress = FALSE, verbose = TRUE) {
   n_models <- length(models)
-  results <- numeric(n_models)
+  results <- vector("list", n_models)
   names(results) <- names(models)
   
   if (show_progress) {
@@ -86,9 +86,9 @@ benchmark <- function(models, X, y, cv = 5L, scoring = NULL, params = NULL, cl=N
     
     scores <- do.call(cross_val_score, args)
     
-    results[i] <- mean(scores)
+    results[[i]] <- list(avg_score = mean(scores), scores = scores)
     
-    if (verbose) cat(sprintf("Mean CV score for %s: %.4f\n", model_name, results[i]))
+    if (verbose) cat(sprintf("Mean CV score for %s: %.4f\n", model_name, results[[i]]$avg_score))
     
     if (show_progress) utils::setTxtProgressBar(pb, i)
   }
