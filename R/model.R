@@ -174,6 +174,19 @@ Model <- R6::R6Class(
       drop(pred)
     },
     
+    
+    #' @description Predict probabilities from fitted model
+    #' @param X Feature matrix for prediction
+    predict_proba = function(X) {
+      if (is.null(self$fitted)) stop("Model not fitted.")
+      if (self$task != "classification") {
+        stop("predict_proba() only for classification tasks")
+      }
+      
+      # That's it - one line!
+      extract_probabilities(self$fitted, X, self$y_train)
+    },
+    
     #' @description Print model information
     #' @return self (invisible) for method chaining
     print = function() {
