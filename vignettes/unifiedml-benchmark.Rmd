@@ -7,6 +7,8 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
+# Classification
+
 ```{r fig.width=7}
 library(unifiedml)
 library(randomForest)
@@ -21,7 +23,7 @@ models <- list(
   glm  = Model$new(caret::train),
   rf   = Model$new(randomForest::randomForest),
   xgb  = Model$new(caret::train),
-  svm  = Model$new(e1071::svm)   # <-- added
+  svm  = Model$new(e1071::svm)   
 )
 
 params <- list(
@@ -38,6 +40,52 @@ params <- list(
              trControl = trainControl(method = "none")),
   
   svm = list(kernel = "radial",   # <-- added
+             cost = 1,
+             gamma = 0.1)
+)
+
+results <- benchmark(models, X, y, cv = 5, params = params)
+print(results)
+```
+
+# Regression 
+
+```{r}
+library(unifiedml)
+library(randomForest)
+library(e1071)
+library(caret)
+
+set.seed(123)
+
+# Regression data
+X <- mtcars[, setdiff(names(mtcars), "mpg")]
+y <- mtcars$mpg
+
+models <- list(
+  glm  = Model$new(caret::train),
+  rf   = Model$new(randomForest::randomForest),
+  xgb  = Model$new(caret::train),
+  svm  = Model$new(e1071::svm)
+)
+
+params <- list(
+  glm = list(method = "glmnet",
+             tuneGrid = data.frame(alpha = 0, lambda = 0.01),
+             trControl = trainControl(method = "none")),
+  
+  rf  = list(ntree = 150),
+  
+  xgb = list(method = "xgbTree",
+             tuneGrid = data.frame(
+               nrounds = 150, max_depth = 3, eta = 0.3,
+               gamma = 0, colsample_bytree = 1,
+               min_child_weight = 1, subsample = 1
+             ),
+             trControl = trainControl(method = "none")),
+  
+  svm = list(type = "eps-regression",  # <-- important for regression
+             kernel = "radial",
              cost = 1,
              gamma = 0.1)
 )
