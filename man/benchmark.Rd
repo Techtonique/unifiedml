@@ -12,7 +12,7 @@ benchmark(
   scoring = NULL,
   params = NULL,
   cl = NULL,
-  show_progress = TRUE,
+  show_progress = FALSE,
   verbose = TRUE
 )
 }
@@ -46,9 +46,7 @@ Supports verbose messages and a progress bar.
 }
 \examples{
 \dontrun{
-library(glmnet)
 library(randomForest)
-library(xgboost)
 
 X <- iris[, 1:4]
 y <- iris$Species

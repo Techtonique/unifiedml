@@ -19,9 +19,7 @@
 #'
 #' @examples
 #' \dontrun{
-#' library(glmnet)
 #' library(randomForest)
-#' library(xgboost)
 #'
 #' X <- iris[, 1:4]
 #' y <- iris$Species
@@ -49,7 +47,7 @@
 #' print(results)
 #' }
 #' @export
-benchmark <- function(models, X, y, cv = 5L, scoring = NULL, params = NULL, cl=NULL, show_progress = TRUE, verbose = TRUE) {
+benchmark <- function(models, X, y, cv = 5L, scoring = NULL, params = NULL, cl=NULL, show_progress = FALSE, verbose = TRUE) {
   n_models <- length(models)
   results <- numeric(n_models)
   names(results) <- names(models)
@@ -62,7 +60,8 @@ benchmark <- function(models, X, y, cv = 5L, scoring = NULL, params = NULL, cl=N
     model_name <- names(models)[i]
     mod <- models[[i]]
     
-    if (verbose) cat(sprintf("Fitting model: %s\n", model_name))
+    if (verbose) cat(sprintf("\n[%d/%d] Fitting model: %s\n", 
+                             i, length(models), model_name))
     
     # Extract model-specific parameters if provided
     extra_args <- if (!is.null(params) && model_name %in% names(params)) {

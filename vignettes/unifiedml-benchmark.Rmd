@@ -1,0 +1,48 @@
+---
+title: "Use `unifiedml` for benchmarking models"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Use `unifiedml` for benchmarking models}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r fig.width=7}
+library(unifiedml)
+library(randomForest)
+library(e1071)
+library(caret)
+set.seed(123)
+
+X <- iris[, 1:4]
+y <- iris$Species
+
+models <- list(
+  glm  = Model$new(caret::train),
+  rf   = Model$new(randomForest::randomForest),
+  xgb  = Model$new(caret::train),
+  svm  = Model$new(e1071::svm)   # <-- added
+)
+
+params <- list(
+  glm = list(method = "glmnet",
+             tuneGrid = data.frame(alpha = 0, lambda = 0.01),
+             trControl = trainControl(method = "none")),
+  
+  rf  = list(ntree = 150),
+  
+  xgb = list(method = "xgbTree",
+             tuneGrid = data.frame(nrounds = 150, max_depth = 3, eta = 0.3,
+                                   gamma = 0, colsample_bytree = 1,
+                                   min_child_weight = 1, subsample = 1),
+             trControl = trainControl(method = "none")),
+  
+  svm = list(kernel = "radial",   # <-- added
+             cost = 1,
+             gamma = 0.1)
+)
+
+results <- benchmark(models, X, y, cv = 5, params = params)
+print(results)
+```
+
