@@ -31,14 +31,14 @@ benchmark(
 \item{params}{Optional named list of lists, each sublist containing extra arguments
 to pass to the corresponding model's \code{fit()} call. Names must match \code{models}.}
 
-\item{cl}{Optional cluster for parallel processing (not yet implemented)}
+\item{cl}{Optional number of clusters for parallel processing}
 
 \item{show_progress}{Logical, whether to show a progress bar (default TRUE).}
 
 \item{verbose}{Logical, whether to print messages about each model (default TRUE).}
 }
 \value{
-A named numeric vector containing the mean CV score for each model.
+A list containing the CV scores for each model.
 }
 \description{
 Perform k-fold cross-validation on a list of models, using model-specific parameters.

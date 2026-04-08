@@ -12,6 +12,7 @@ cross_val_score(
   scoring = NULL,
   show_progress = TRUE,
   cl = NULL,
+  seed = 123,
   ...
 )
 }
@@ -29,7 +30,9 @@ cross_val_score(
 
 \item{show_progress}{Whether to show progress bar (default: TRUE)}
 
-\item{cl}{Optional cluster for parallel processing (not yet implemented)}
+\item{cl}{Optional number of clusters for parallel processing}
+
+\item{seed}{Reproducibility seed}
 
 \item{...}{Additional arguments passed to model$fit() or model$predict()}
 }

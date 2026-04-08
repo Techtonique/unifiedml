@@ -11,7 +11,8 @@
 #' @param scoring Scoring metric: "rmse", "mae", "accuracy", or "f1" 
 #'               (default: auto-detected based on task)
 #' @param show_progress Whether to show progress bar (default: TRUE)
-#' @param cl Optional cluster for parallel processing (not yet implemented)
+#' @param cl Optional number of clusters for parallel processing
+#' @param seed Reproducibility seed
 #' @param ... Additional arguments passed to model$fit() or model$predict()
 #' 
 #' @return Vector of cross-validation scores for each fold
@@ -39,10 +40,17 @@
 #' 
 #' @export
 cross_val_score <- function(model, X, y, cv = 5, scoring = NULL, 
-                            show_progress = TRUE, cl = NULL, ...) {
+                            show_progress = TRUE, cl = NULL, 
+                            seed = 123, ...) {
   X <- as.matrix(X)
   n <- nrow(X)
-  folds <- split(sample(seq_len(n)), rep(1:cv, length.out = n))
+  if (length(y) != n)
+    stop("Must have: length(y) == nrow(X)")
+  
+  set.seed(seed)
+  
+  folds <- base::split(base::sample(seq_len(n)), 
+                       rep(1:cv, length.out = n))
   scores <- numeric(cv)
   
   # Auto-detect task based on y
@@ -111,7 +119,7 @@ cross_val_score <- function(model, X, y, cv = 5, scoring = NULL,
     
   } else {
     cl_SOCK <- parallel::makeCluster(cl, type = "SOCK")
-    doParallel::registerDoParallel(cl_SOCK)
+    doSNOW::registerDoSNOW(cl_SOCK)
     `%op%` <-  foreach::`%dopar%`
     
     if (show_progress)

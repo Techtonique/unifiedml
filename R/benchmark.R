@@ -11,11 +11,11 @@
 #'               (default: auto-detected based on task)
 #' @param params Optional named list of lists, each sublist containing extra arguments
 #'   to pass to the corresponding model's \code{fit()} call. Names must match `models`.
-#' @param cl Optional cluster for parallel processing (not yet implemented)
+#' @param cl Optional number of clusters for parallel processing
 #' @param show_progress Logical, whether to show a progress bar (default TRUE).
 #' @param verbose Logical, whether to print messages about each model (default TRUE).
 #'
-#' @return A named numeric vector containing the mean CV score for each model.
+#' @return A list containing the CV scores for each model.
 #'
 #' @examples
 #' \dontrun{
