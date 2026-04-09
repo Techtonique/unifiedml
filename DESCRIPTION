@@ -18,7 +18,7 @@ Depends:
     R6,
     foreach
 Imports: 
-    Rcpp (>= 1.1.0), doSNOW, kernelshap, shapviz
+    Rcpp (>= 1.1.0), kernelshap, shapviz
 Suggests: 
     testthat (>= 3.0.0),
     knitr,

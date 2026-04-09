@@ -119,31 +119,15 @@ cross_val_score <- function(model, X, y, cv = 5, scoring = NULL,
     
   } else {
     cl_SOCK <- parallel::makeCluster(cl, type = "SOCK")
-    doSNOW::registerDoSNOW(cl_SOCK)
+    doParallel::registerDoParallel(cl_SOCK)
     `%op%` <-  foreach::`%dopar%`
-    
-    if (show_progress)
-    {
-      pb <- txtProgressBar(min = 0,
-                           max = cv,
-                           style = 3)
-      progress <- function(n)
-        utils::setTxtProgressBar(pb, n)
-      opts <- list(progress = progress)
-      
-    } else {
-      
-      opts <- NULL
-      
-    }
     
     # KEY FIX: Store the result and use .combine to collect scores
     scores <- foreach::foreach(i = seq_len(cv), 
                                .packages = c("unifiedml"),
                                .combine = 'c',  # ADDED: Combine results into vector
                                .errorhandling = "stop",
-                               .options.snow = opts, 
-                               .verbose = FALSE) %op% {  # Changed to FALSE for cleaner output
+                               .verbose = show_progress) %op% {  # Changed to FALSE for cleaner output
                                  
                                  val_idx   <- folds[[i]]
                                  train_idx <- setdiff(seq_len(n), val_idx)
@@ -191,11 +175,6 @@ cross_val_score <- function(model, X, y, cv = 5, scoring = NULL,
                                  # RETURN the score (not assign to scores[i])
                                  score
                                }
-    
-    if (show_progress)
-    {
-      close(pb)
-    }
     
     parallel::stopCluster(cl_SOCK)
     
