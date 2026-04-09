@@ -49,21 +49,24 @@ compute_shap_values <- function(model, X = NULL, bg_X = NULL, class_index = NULL
   
   # Create prediction function based on task type
   if (model$task == "regression") {
+    # For regression, use standard predict
     pred_fun <- function(object, X_new) {
-      # Ensure X_new has column names
+      # Temporarily swap fitted model
+      old_fitted <- model$fitted
+      model$fitted <- object
+      
+      # Get predictions
       X_new <- as.matrix(X_new)
       if (is.null(colnames(X_new))) {
         colnames(X_new) <- colnames(X)
       }
       
-      # Create temporary model for prediction
-      temp_mod <- Model$new(model$model_fn)
-      temp_mod$fitted <- object
-      temp_mod$task <- "regression"
-      temp_mod$X_train <- X_new
+      result <- as.numeric(model$predict(X_new))
       
-      # Return numeric predictions
-      as.numeric(temp_mod$predict(X_new))
+      # Restore original fitted model
+      model$fitted <- old_fitted
+      
+      return(result)
     }
     
     # Compute SHAP values for regression
@@ -76,7 +79,7 @@ compute_shap_values <- function(model, X = NULL, bg_X = NULL, class_index = NULL
     )
     
   } else {
-    # Classification task - return probabilities
+    # Classification task - use predict_proba method
     if (is.null(model$y_train)) {
       stop("Training labels (y_train) required for classification SHAP values")
     }
@@ -84,56 +87,39 @@ compute_shap_values <- function(model, X = NULL, bg_X = NULL, class_index = NULL
     classes <- levels(model$y_train)
     message("Classification with classes: ", paste(classes, collapse = ", "))
     
+    # Check if model has predict_proba method
+    if (is.null(model$predict_proba)) {
+      stop("Model does not have predict_proba method. ",
+           "Please update unifiedml package.")
+    }
+    
     pred_fun <- function(object, X_new) {
+      # Temporarily swap fitted model
+      old_fitted <- model$fitted
+      model$fitted <- object
+      
       # Ensure X_new has column names
       X_new <- as.matrix(X_new)
       if (is.null(colnames(X_new))) {
         colnames(X_new) <- colnames(X)
       }
       
-      # Create temporary model for prediction
-      temp_mod <- Model$new(model$model_fn)
-      temp_mod$fitted <- object
-      temp_mod$task <- "classification"
-      temp_mod$X_train <- X_new
-      temp_mod$y_train <- model$y_train
+      # Use predict_proba to get probabilities
+      result <- model$predict_proba(X_new)
       
-      # Get probability predictions
-      pred <- tryCatch({
-        # Try to get probabilities
-        pred_result <- temp_mod$predict(X_new, type = "response")
-        
-        # Check what type of prediction we got
-        if (is.matrix(pred_result) && ncol(pred_result) == length(classes)) {
-          # Already probability matrix
-          colnames(pred_result) <- classes
-          return(pred_result)
-        } else if (is.numeric(pred_result)) {
-          # Binary classification with numeric output (probability for class 2)
-          prob_matrix <- matrix(0, nrow = length(pred_result), ncol = length(classes))
-          prob_matrix[, 2] <- pred_result
-          prob_matrix[, 1] <- 1 - pred_result
-          colnames(prob_matrix) <- classes
-          return(prob_matrix)
-        } else if (is.factor(pred_result)) {
-          # Hard classes - convert to probabilities (not ideal)
-          warning("Model returned hard classes instead of probabilities. ",
-                  "SHAP values may be less informative.")
-          prob_matrix <- matrix(0, nrow = length(pred_result), ncol = length(classes))
-          for(i in seq_along(pred_result)) {
-            prob_matrix[i, which(classes == pred_result[i])] <- 1
-          }
-          colnames(prob_matrix) <- classes
-          return(prob_matrix)
-        } else {
-          stop("Unable to extract probability predictions from model")
-        }
-      }, error = function(e) {
-        stop("Failed to get probability predictions: ", e$message,
-             "\nFor classification SHAP, model must support probability predictions.")
-      })
+      # Restore original fitted model
+      model$fitted <- old_fitted
       
-      return(pred)
+      # Ensure result is a matrix with proper dimensions
+      if (is.vector(result)) {
+        result <- matrix(result, ncol = 1)
+      }
+      
+      if (is.null(colnames(result))) {
+        colnames(result) <- classes
+      }
+      
+      return(result)
     }
     
     # Compute SHAP values for classification
@@ -162,10 +148,16 @@ compute_shap_values <- function(model, X = NULL, bg_X = NULL, class_index = NULL
       }
       
       message("Extracting SHAP values for class: ", class_index)
+      
+      # Extract single class
       result <- list(
         S = result$S[, , class_index, drop = FALSE],
         X = result$X,
-        baseline = result$baseline[, class_index],
+        baseline = if (is.matrix(result$baseline)) {
+          result$baseline[, class_index]
+        } else {
+          result$baseline[class_index]
+        },
         class = class_index,
         classes = classes,
         feature_names = result$feature_names
@@ -289,9 +281,11 @@ analyze_shap <- function(model, X = NULL, bg_X = NULL, class_index = NULL,
 #' @param models List of fitted unifiedml Model objects
 #' @param model_names Names for the models (optional)
 #' @param X Feature matrix (optional, uses training data from first model)
+#' @param class_index For classification, which class to explain
 #' 
 #' @return Data frame with feature importance for all models
-compare_shap_importance <- function(models, model_names = NULL, X = NULL) {
+#' @export
+compare_shap_importance <- function(models, model_names = NULL, X = NULL, class_index = NULL) {
   if (is.null(model_names)) {
     model_names <- paste0("Model_", seq_along(models))
   }
@@ -305,13 +299,26 @@ compare_shap_importance <- function(models, model_names = NULL, X = NULL) {
     features <- paste0("X", 1:ncol(X))
   }
   
+  # Check task consistency
+  tasks <- sapply(models, function(m) m$task)
+  if (length(unique(tasks)) > 1) {
+    warning("Models have different task types. Comparison may not be meaningful.")
+  }
+  
   # Compute importance for each model
   importance_list <- list()
   
   for (i in seq_along(models)) {
     message("\nProcessing ", model_names[i], "...")
-    shap_result <- compute_shap_values(models[[i]], X = X)
-    importance <- colMeans(abs(shap_result$S))
+    shap_result <- compute_shap_values(models[[i]], X = X, class_index = class_index)
+    
+    if (models[[i]]$task == "classification" && is.null(class_index)) {
+      # For multi-class without class_index, take mean across classes
+      importance <- rowMeans(apply(abs(shap_result$S), 2:3, mean))
+    } else {
+      importance <- colMeans(abs(shap_result$S))
+    }
+    
     importance_list[[model_names[i]]] <- importance
   }
   

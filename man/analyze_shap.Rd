@@ -8,6 +8,7 @@ analyze_shap(
   model,
   X = NULL,
   bg_X = NULL,
+  class_index = NULL,
   plot_type = "importance",
   feature = NULL,
   ...
@@ -19,6 +20,8 @@ analyze_shap(
 \item{X}{Feature matrix (optional)}
 
 \item{bg_X}{Background data (optional)}
+
+\item{class_index}{For classification, which class to explain (default: NULL = all classes)}
 
 \item{plot_type}{Type of plot: "importance", "summary", "dependence", or "none"}
 

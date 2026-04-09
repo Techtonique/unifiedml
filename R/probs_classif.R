@@ -2,13 +2,16 @@
 # FIXED PROBABILITY EXTRACTOR - Handles GLM and all model types properly
 # ============================================================================
 
+#' @importFrom stats predict family
+NULL
+
 #' Extract probability predictions from any R model in a standardized format
 #' 
 #' @param model Fitted model object (any class)
 #' @param X Feature matrix or data.frame for predictions
 #' @param y_train Optional training labels (for class names)
 #' @param verbose Print diagnostic information
-#' @return Probability matrix [n_samples × n_classes] with column names as class labels
+#' @return Probability matrix n_samples by n_classes with column names as class labels
 #' 
 #' @export
 extract_probabilities <- function(model, X, y_train = NULL, verbose = FALSE) {

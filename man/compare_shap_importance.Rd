@@ -4,7 +4,12 @@
 \alias{compare_shap_importance}
 \title{Compare SHAP importance across multiple models}
 \usage{
-compare_shap_importance(models, model_names = NULL, X = NULL)
+compare_shap_importance(
+  models,
+  model_names = NULL,
+  X = NULL,
+  class_index = NULL
+)
 }
 \arguments{
 \item{models}{List of fitted unifiedml Model objects}
@@ -12,6 +17,8 @@ compare_shap_importance(models, model_names = NULL, X = NULL)
 \item{model_names}{Names for the models (optional)}
 
 \item{X}{Feature matrix (optional, uses training data from first model)}
+
+\item{class_index}{For classification, which class to explain}
 }
 \value{
 Data frame with feature importance for all models

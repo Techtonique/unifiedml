@@ -4,7 +4,7 @@
 \alias{compute_shap_values}
 \title{Compute SHAP values for unifiedml Model objects}
 \usage{
-compute_shap_values(model, X = NULL, bg_X = NULL, ...)
+compute_shap_values(model, X = NULL, bg_X = NULL, class_index = NULL, ...)
 }
 \arguments{
 \item{model}{A fitted unifiedml Model object}
@@ -12,6 +12,8 @@ compute_shap_values(model, X = NULL, bg_X = NULL, ...)
 \item{X}{Feature matrix (optional, uses training data if NULL)}
 
 \item{bg_X}{Background data for SHAP (optional, uses first 20 rows if NULL)}
+
+\item{class_index}{For classification, which class to explain (NULL = all classes)}
 
 \item{...}{Additional arguments passed to kernelshap}
 }
