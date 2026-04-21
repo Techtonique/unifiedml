@@ -1,3 +1,15 @@
+# 2026-04-21
+
+For v0.3.0: 
+
+- add train_test_split
+- return probabilities if detected
+- return factors for classification
+- add caret example
+- add benchmarking function
+- fix parallel cross-validation
+- Shapley values for regression through kernel SHAP
+
 # 2026-04-09
 
 - Add `predict_proba` to class `Model`
