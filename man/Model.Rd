@@ -30,11 +30,10 @@ predictions <- mod$predict(X)
 data(iris)
 iris_binary <- iris[iris$Species \%in\% c("setosa", "versicolor"), ]
 X_class <- as.matrix(iris_binary[, 1:4])
-y_class <- iris_binary$Species  # factor -> classification
+y_class <- droplevels(iris_binary$Species)  # factor -> classification
 
 mod2 <- Model$new(e1071::svm)
 mod2$fit(X_class, y_class, kernel = "radial")
-mod2$summary()
 
 # Cross-validation
 cv_scores <- cross_val_score(mod, X, y, cv = 5)
@@ -65,6 +64,7 @@ Your Name
 \item \href{#method-Model-new}{\code{Model$new()}}
 \item \href{#method-Model-fit}{\code{Model$fit()}}
 \item \href{#method-Model-predict}{\code{Model$predict()}}
+\item \href{#method-Model-predict_proba}{\code{Model$predict_proba()}}
 \item \href{#method-Model-print}{\code{Model$print()}}
 \item \href{#method-Model-summary}{\code{Model$summary()}}
 \item \href{#method-Model-plot}{\code{Model$plot()}}
@@ -140,6 +140,23 @@ Generate predictions from fitted model
 }
 \subsection{Returns}{
 Vector of predictions
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Model-predict_proba"></a>}}
+\if{latex}{\out{\hypertarget{method-Model-predict_proba}{}}}
+\subsection{Method \code{predict_proba()}}{
+Predict probabilities from fitted model
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Model$predict_proba(X)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{X}}{Feature matrix for prediction}
+}
+\if{html}{\out{</div>}}
 }
 }
 \if{html}{\out{<hr>}}

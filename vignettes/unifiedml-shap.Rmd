@@ -1,0 +1,77 @@
+---
+title: "Shapley values"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Shapley values}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+# Regression example
+
+```{r fig.width=7}
+library(unifiedml) # this package
+library(randomForest)
+
+# Create data with or without column names
+set.seed(42)
+X <- matrix(rnorm(100), ncol=4)
+# No column names initially - function will add X1, X2, etc.
+y <- 2*X[,1] - 1.5*X[,2] + rnorm(25)
+
+# Fit model
+mod <- Model$new(randomForest::randomForest)
+mod$fit(X, y, ntree=100)
+
+# Compute SHAP values (automatically handles missing column names)
+(shap_result <- unifiedml::compute_shap_values(mod))
+# Message: "Added column names: X1, X2, X3, X4"
+
+# View feature importance
+colMeans(abs(shap_result$S))
+
+# With meaningful column names
+colnames(X) <- c("Age", "Income", "Education", "Experience")
+mod2 <- Model$new(randomForest::randomForest)
+mod2$fit(X, y, ntree=100)
+(shap_result2 <- unifiedml::compute_shap_values(mod2))  # Uses your meaningful names
+```
+
+
+```{r fig.width=7}
+#library(shapviz)
+
+# Full analysis with importance plot
+analysis <- unifiedml::analyze_shap(mod, plot_type = "importance")
+
+# Access results
+analysis$feature_importance
+analysis$plots$importance
+
+# Summary plot (both bar and beeswarm)
+(analysis2 <- unifiedml::analyze_shap(mod, plot_type = "summary"))
+
+# Dependence plot for specific feature
+(analysis3 <- unifiedml::analyze_shap(mod, plot_type = "dependence", feature = "X1"))
+```
+
+
+# Compare multiple models 
+
+```{r}
+# Train different models
+mod_rf <- Model$new(randomForest::randomForest)
+mod_rf$fit(X, y, ntree=100)
+
+mod_lm <- Model$new(lm)  
+mod_lm$fit(X, y)
+
+# Compare SHAP importance
+comparison <- unifiedml::compare_shap_importance(
+  models = list(mod_rf, mod_lm),
+  model_names = c("Random Forest", "Linear Regression"),
+  X = X
+)
+print(comparison)
+```
+

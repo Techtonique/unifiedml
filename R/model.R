@@ -42,11 +42,10 @@ NULL
 #' data(iris)
 #' iris_binary <- iris[iris$Species %in% c("setosa", "versicolor"), ]
 #' X_class <- as.matrix(iris_binary[, 1:4])
-#' y_class <- iris_binary$Species  # factor -> classification
+#' y_class <- droplevels(iris_binary$Species)  # factor -> classification
 #' 
 #' mod2 <- Model$new(e1071::svm)
 #' mod2$fit(X_class, y_class, kernel = "radial")
-#' mod2$summary()
 #' 
 #' # Cross-validation
 #' cv_scores <- cross_val_score(mod, X, y, cv = 5)
@@ -112,8 +111,6 @@ Model <- R6::R6Class(
         self$fitted <- tryCatch(
           do.call(self$model_fn, fit_args),
           error = function(e) {
-            #misc::debug_print(X)
-            #misc::debug_print(y)
             fit_args <- c(list(x = as.matrix(X), y = as.integer(y)), list(...))
             self$fitted <- tryCatch(do.call(self$model_fn, fit_args),
                                     error = function(e) {
@@ -139,33 +136,55 @@ Model <- R6::R6Class(
       # 1. Try newdata (formula models)
       df <- data.frame(X)
       pred <- tryCatch(
-        predict(self$fitted, newdata = df, ...),
+        predict(self$fitted, df, ...),
         error = function(e) NULL
       )
       
       # 2. Fallback: newx (matrix models)
       if (is.null(pred)) {
         pred <- tryCatch(
-          predict(self$fitted, newx = X, ...),
+          predict(self$fitted, X, ...),
           error = function(e) {
-            stop("Predict failed with both newdata and newx.")
+            stop("Predict failed.")
           }
         )
       }
       
+      if (is.list(pred))
+        return(pred)
+      
+      if (!is.null(dim(pred)) && (dim(pred)[2] != 1) && is.numeric(pred)) 
+      {
+        return(pred)
+      }
+      
       # Clean output
       if (is.matrix(pred) && ncol(pred) == 1) pred <- drop(pred)
-      if (is.list(pred)) pred <- unlist(pred)
       
       # For classification, ensure factors are returned as original levels if possible
       if (self$task == "classification" && is.factor(self$y_train)) {
         if (is.numeric(pred)) {
           # Convert numeric predictions back to factor levels
           pred <- factor(levels(self$y_train)[pred + 1], levels = levels(self$y_train))
+        } else {
+          pred <- droplevels(as.factor(pred))
         }
       }
       
-      pred
+      drop(pred)
+    },
+    
+    
+    #' @description Predict probabilities from fitted model
+    #' @param X Feature matrix for prediction
+    predict_proba = function(X) {
+      if (is.null(self$fitted)) stop("Model not fitted.")
+      if (self$task != "classification") {
+        stop("predict_proba() only for classification tasks")
+      }
+      
+      # That's it - one line!
+      extract_probabilities(self$fitted, X, self$y_train)
     },
     
     #' @description Print model information

@@ -12,6 +12,7 @@ cross_val_score(
   scoring = NULL,
   show_progress = TRUE,
   cl = NULL,
+  seed = 123,
   ...
 )
 }
@@ -29,9 +30,11 @@ cross_val_score(
 
 \item{show_progress}{Whether to show progress bar (default: TRUE)}
 
-\item{cl}{Optional cluster for parallel processing (not yet implemented)}
+\item{cl}{Optional number of clusters for parallel processing}
 
-\item{...}{Additional arguments passed to model$fit()}
+\item{seed}{Reproducibility seed}
+
+\item{...}{Additional arguments passed to model$fit() or model$predict()}
 }
 \value{
 Vector of cross-validation scores for each fold
@@ -54,7 +57,7 @@ mean(cv_scores)  # Average RMSE
 
 # Classification with accuracy scoring
 data(iris)
-X_class <- as.matrix(iris[, 1:4])
+X_class <- iris[, 1:4]
 y_class <- iris$Species  # factor -> classification
 
 mod2 <- Model$new(e1071::svm)
