@@ -52,18 +52,18 @@ print(head(mod$predict(datasplit$X_test)))
 print(head(mod$predict(datasplit$X_test, type="prob")))
 
 (cv <- cross_val_score(mod, datasplit$X_train, datasplit$y_train, cv = 5L, 
-                       method = "glmnet",
+                       fit_params=list(method = "glmnet",
                        tuneGrid = data.frame(alpha = 0,  # ridge regression
                        lambda = 0.01),  # fixed lambda
-                       trControl = caret::trainControl(method = "none")))  # Auto-uses accuracy
+                       trControl = caret::trainControl(method = "none"))))  # Auto-uses accuracy
 cat("\nMean Accuracy:", mean(cv), "\n")
 
 
 (cv <- cross_val_score(mod, datasplit$X_train, datasplit$y_train, cv = 5L, 
-                       method = "glmnet",
+                       fit_params=list(method = "glmnet",
                        tuneGrid = data.frame(alpha = 0.5,  # ridge regression
                        lambda = 0.01),  # fixed lambda
-                       trControl = caret::trainControl(method = "none")))  # Auto-uses accuracy
+                       trControl = caret::trainControl(method = "none"))))  # Auto-uses accuracy
 cat("\nMean Accuracy:", mean(cv), "\n")
 ```
 

@@ -11,9 +11,11 @@ cross_val_score(
   cv = 5,
   scoring = NULL,
   show_progress = TRUE,
+  verbose = TRUE,
   cl = NULL,
   seed = 123,
-  ...
+  fit_params = NULL,
+  predict_params = NULL
 )
 }
 \arguments{
@@ -25,16 +27,23 @@ cross_val_score(
 
 \item{cv}{Number of cross-validation folds (default: 5)}
 
-\item{scoring}{Scoring metric: "rmse", "mae", "accuracy", or "f1"
-(default: auto-detected based on task)}
+\item{scoring}{Scoring metric: "rmse", "mae", "accuracy", "f1", or a
+custom function with signature \code{function(true, pred)} returning
+a scalar. Default: auto-detected based on task type.}
 
-\item{show_progress}{Whether to show progress bar (default: TRUE)}
+\item{show_progress}{Whether to show progress bar (default: TRUE) in sequential mode}
 
-\item{cl}{Optional number of clusters for parallel processing}
+\item{verbose}{logical flag enabling verbose messages (default: TRUE) in parallel mode}
+
+\item{cl}{Optional number of clusters for parallel processing
+If using \code{cl} for parallel execution, custom scoring functions must
+be self-contained (no dependencies on the calling environment).}
 
 \item{seed}{Reproducibility seed}
 
-\item{...}{Additional arguments passed to model$fit() or model$predict()}
+\item{fit_params}{A list of additional arguments passed to model$fit()}
+
+\item{predict_params}{A list of additional arguments passed to model$predict()}
 }
 \value{
 Vector of cross-validation scores for each fold
@@ -45,24 +54,47 @@ across different model types. The scoring metric is automatically
 selected based on the detected task type.
 }
 \examples{
-\donttest{
+\dontrun{
 library(glmnet)
 X <- matrix(rnorm(100), ncol = 4)
 y <- 2*X[,1] - 1.5*X[,2] + rnorm(25)  # numeric -> regression
 
 mod <- Model$new(glmnet::glmnet)
-mod$fit(X, y, alpha = 0, lambda = 0.1)
-cv_scores <- cross_val_score(mod, X, y, cv = 5)  # auto-uses RMSE
+(cv_scores <- cross_val_score(mod, X, y, cv = 5))  # auto-uses RMSE
 mean(cv_scores)  # Average RMSE
+
+cross_val_score(mod, X, y,
+fit_params     = list(alpha = 0, lambda = 0.1),
+predict_params = list(type = "response"))
+
+cross_val_score(mod, X, y,
+fit_params     = list(alpha = 0.5, lambda = 0.1),
+predict_params = list(type = "response"))
+
+# Custom scoring: R-squared
+r2 <- function(true, pred) {
+  ss_res <- sum((true - pred)^2)
+  ss_tot <- sum((true - mean(true))^2)
+  1 - ss_res / ss_tot
+}
+
+(cv_scores4 <- cross_val_score(mod, X, y, cv = 5, scoring = r2))
+mean(cv_scores4)  # Average R²
 
 # Classification with accuracy scoring
 data(iris)
 X_class <- iris[, 1:4]
 y_class <- iris$Species  # factor -> classification
-
 mod2 <- Model$new(e1071::svm)
-cv_scores2 <- cross_val_score(mod2, X_class, y_class, cv = 5)  # auto-uses accuracy
+(cv_scores2 <- cross_val_score(mod2, X_class, y_class, cv = 5))  # auto-uses accuracy
 mean(cv_scores2)  # Average accuracy
+
+iris_bin <- iris[iris$Species != "virginica", ]
+X_bin <- iris_bin[, 1:4]
+y_bin <- droplevels(iris_bin$Species)
+(cv_scores3 <- cross_val_score(mod2, X_bin, y_bin, cv = 3, 
+scoring="f1", fit_params=list(kernel="polynomial")))  
+mean(cv_scores3)  # Average F1
 }
 
 }

@@ -46,9 +46,9 @@ NULL
 #' 
 #' mod2 <- Model$new(e1071::svm)
 #' mod2$fit(X_class, y_class, kernel = "radial")
+#' predictions <- mod2$predict(X_class)
+#' mod2$predict_proba(X_class)
 #' 
-#' # Cross-validation
-#' cv_scores <- cross_val_score(mod, X, y, cv = 5)
 #' }
 #' 
 #' @export
@@ -150,10 +150,10 @@ Model <- R6::R6Class(
         )
       }
       
-      if (is.list(pred))
+      if (is.list(pred)) # example: ranger
         return(pred)
       
-      if (!is.null(dim(pred)) && (dim(pred)[2] != 1) && is.numeric(pred)) 
+      if (!is.null(dim(pred)) && (dim(pred)[2] != 1) && is.numeric(pred)) # probabilities array
       {
         return(pred)
       }
@@ -182,8 +182,6 @@ Model <- R6::R6Class(
       if (self$task != "classification") {
         stop("predict_proba() only for classification tasks")
       }
-      
-      # That's it - one line!
       extract_probabilities(self$fitted, X, self$y_train)
     },
     

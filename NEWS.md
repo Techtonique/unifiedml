@@ -1,3 +1,10 @@
+# 2026-04-29
+
+For v0.3.0: 
+
+- can provide a scoring function in cross-validation (`cross_val_score`)
+- Use `fit_params` and `predict_params` in `cross_val_score`
+
 # 2026-04-21
 
 For v0.3.0: 

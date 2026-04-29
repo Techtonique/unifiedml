@@ -75,8 +75,8 @@ cat("\nMean Accuracy:", mean(cv4), "\n")
 mod4 <- Model$new(nnet::nnet) 
 mod4$fit(X_binary, y_binary, size=50, trace=FALSE)
 print(head(mod4$predict(X_binary, type="class")))
-(cv4 <- cross_val_score(mod4, X_binary, y_binary, size=50L, 
-                        cv = 5L, type="class", trace=FALSE))
+(cv4 <- cross_val_score(mod4, X_binary, y_binary, fit_params=list(size=50L, 
+                        cv = 5L, type="class", trace=FALSE)))
 cat("\nMean Accuracy:", mean(cv4), "\n")
 
 
@@ -105,8 +105,8 @@ cat("\nMean Accuracy:", mean(cv4), "\n")
 mod4 <- Model$new(nnet::nnet) 
 mod4$fit(X_multi, y_multi, size=50, trace=FALSE)
 print(head(mod4$predict(X_multi, type="class")))
-(cv4 <- cross_val_score(mod4, X_multi, y_multi, size=50L, 
-                        cv = 5L, type="class", trace=FALSE))
+(cv4 <- cross_val_score(mod4, X_multi, y_multi, fit_params=list(size=50L, 
+                        cv = 5L, type="class", trace=FALSE)))
 cat("\nMean Accuracy:", mean(cv4), "\n")
 
 

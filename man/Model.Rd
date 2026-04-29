@@ -34,9 +34,9 @@ y_class <- droplevels(iris_binary$Species)  # factor -> classification
 
 mod2 <- Model$new(e1071::svm)
 mod2$fit(X_class, y_class, kernel = "radial")
+predictions <- mod2$predict(X_class)
+mod2$predict_proba(X_class)
 
-# Cross-validation
-cv_scores <- cross_val_score(mod, X, y, cv = 5)
 }
 
 }
