@@ -1,332 +1,269 @@
-# ============================================================================
-# FIXED PROBABILITY EXTRACTOR - Handles GLM and all model types properly
-# ============================================================================
-
-#' @importFrom stats predict family
+#' @importFrom stats predict family model.matrix
 NULL
 
-#' Extract probability predictions from any R model in a standardized format
-#' 
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+.get_class_labels <- function(y) {
+  if (is.factor(y))          return(levels(y))
+  if (is.character(y))       return(sort(unique(y)))
+  if (is.numeric(y))         return(c("0", "1"))
+  NULL
+}
+
+.to_matrix <- function(X) {
+  if (!is.matrix(X)) as.matrix(X) else X
+}
+
+.to_df <- function(X) {
+  if (!is.data.frame(X)) as.data.frame(X) else X
+}
+
+# Dispatcher table: each entry is function(model, X) -> raw prediction or NULL
+.extractors <- list(
+  
+  randomForest = function(model, X) {
+    if (model$type != "classification") return(NULL)
+    tryCatch(predict(model, X, type = "prob"), error = function(e) NULL)
+  },
+  
+  glm = function(model, X) {
+    fam <- tryCatch(family(model)$family, error = function(e) NULL)
+    if (is.null(fam)) return(NULL)
+    X_df <- .to_df(X)
+    if (fam == "binomial") {
+      tryCatch(predict(model, newdata = X_df, type = "response"), error = function(e) NULL)
+    } else {
+      NULL  # multinomial is not a base-R glm family; handled via fallback
+    }
+  },
+  
+  multinom = function(model, X) {
+    tryCatch(predict(model, newdata = .to_df(X), type = "probs"), error = function(e) NULL)
+  },
+  
+  svm = function(model, X) {
+    if (model$type != 0L) return(NULL)  # 0 = C-classification
+    tryCatch({
+      pred_obj <- predict(model, X, probability = TRUE)
+      attr(pred_obj, "probabilities")
+    }, error = function(e) NULL)
+  },
+  
+  nnet = function(model, X) {
+    tryCatch(predict(model, newdata = .to_df(X), type = "raw"), error = function(e) NULL)
+  },
+  
+  rpart = function(model, X) {
+    tryCatch(predict(model, newdata = .to_df(X), type = "prob"), error = function(e) NULL)
+  },
+  
+  xgb.Booster = function(model, X) {
+    tryCatch({
+      pred <- predict(.to_matrix(X))
+      if (is.null(dim(pred))) cbind(1 - pred, pred) else pred
+    }, error = function(e) NULL)
+  },
+  
+  glmnet = function(model, X) {
+    tryCatch({
+      pred <- predict(model, .to_matrix(X), type = "response")
+      if (is.matrix(pred) && ncol(pred) == 1) cbind(1 - pred, pred) else pred
+    }, error = function(e) NULL)
+  },
+  
+  ksvm = function(model, X) {
+    tryCatch(
+      predict(model, .to_matrix(X), type = "probabilities"),
+      error = function(e) NULL
+    )
+  }
+)
+
+# Generic fallback cascade - tried in order when no specific extractor matches
+.fallback_extractors <- list(
+  
+  function(model, X)
+    tryCatch(predict(model, newdata = .to_df(X),  type = "response"),   error = function(e) NULL),
+  
+  function(model, X)
+    tryCatch(predict(model, newx = .to_matrix(X), type = "response"),   error = function(e) NULL),
+  
+  function(model, X)
+    tryCatch(predict(model, X,                    type = "response"),   error = function(e) NULL),
+  
+  function(model, X)
+    tryCatch(predict(model, newdata = .to_df(X),  type = "prob"),       error = function(e) NULL),
+  
+  function(model, X)
+    tryCatch(predict(model, newdata = .to_df(X),  type = "raw"),        error = function(e) NULL),
+  
+  function(model, X)
+    tryCatch({
+      pred_obj <- predict(model, X, probability = TRUE)
+      probs    <- attr(pred_obj, "probabilities")
+      if (is.matrix(probs)) probs else NULL
+    }, error = function(e) NULL),
+  
+  function(model, X)
+    tryCatch(predict(model, X), error = function(e) NULL)
+)
+
+# ---------------------------------------------------------------------------
+# Standardise raw prediction -> n x k probability matrix
+# ---------------------------------------------------------------------------
+
+.standardize_to_probs <- function(pred, y_train, verbose) {
+  
+  # Case 1: already a valid probability matrix
+  if (is.matrix(pred) && all(pred >= 0) && all(pred <= 1)) {
+    row_sums <- rowSums(pred)
+    if (all(abs(row_sums - 1) < 1e-6)) {
+      if (verbose) message("  Already a probability matrix")
+      if (is.null(colnames(pred)) && !is.null(y_train))
+        colnames(pred) <- .get_class_labels(y_train)
+      return(pred)
+    }
+  }
+  
+  # Case 2: numeric vector
+  if (is.numeric(pred) && !is.matrix(pred)) {
+    if (all(pred >= 0 & pred <= 1)) {
+      if (verbose) message("  Binary probability vector")
+      n_classes <- if (!is.null(y_train) && is.factor(y_train)) nlevels(y_train) else 2
+      if (n_classes != 2)
+        stop("Probability vector implies binary classification but y_train has ", n_classes, " classes")
+      prob_matrix <- cbind(1 - pred, pred)
+      colnames(prob_matrix) <- if (!is.null(y_train))
+        .get_class_labels(y_train) else c("Class0", "Class1")
+      return(prob_matrix)
+    } else {
+      warning("Numeric predictions outside [0,1] interpreted as logits; verify this is correct")
+      if (verbose) message("  Logit vector -> sigmoid")
+      probs <- 1 / (1 + exp(-pred))
+      return(.standardize_to_probs(probs, y_train, verbose))
+    }
+  }
+  
+  # Case 3: factor (hard classes) -> one-hot
+  if (is.factor(pred)) {
+    if (verbose) message("  Hard classes -> one-hot")
+    classes      <- levels(pred)
+    prob_matrix  <- model.matrix(~ pred - 1)
+    colnames(prob_matrix) <- classes
+    return(prob_matrix)
+  }
+  
+  # Case 4: matrix needing normalisation
+  if (is.matrix(pred)) {
+    row_sums <- rowSums(pred)
+    if (any(abs(row_sums - 1) > 1e-6)) {
+      if (all(pred >= 0)) {
+        if (verbose) message("  Raw score matrix -> row normalise")
+        prob_matrix <- pred / row_sums
+      } else {
+        if (verbose) message("  Logit matrix -> softmax")
+        exp_pred    <- exp(pred - apply(pred, 1, max))  # numerically stable
+        prob_matrix <- exp_pred / rowSums(exp_pred)
+      }
+      if (!is.null(y_train))
+        colnames(prob_matrix) <- .get_class_labels(y_train)
+      return(prob_matrix)
+    }
+  }
+  
+  # Case 5: list with $probabilities
+  if (is.list(pred) && !is.null(pred$probabilities)) {
+    if (verbose) message("  List$probabilities")
+    return(.standardize_to_probs(pred$probabilities, y_train, verbose))
+  }
+  
+  # Last resort
+  if (verbose) message("  Unknown format, coercing to matrix")
+  .standardize_to_probs(as.matrix(pred), y_train, verbose)
+}
+
+# ---------------------------------------------------------------------------
+# Public function
+# ---------------------------------------------------------------------------
+
+#' Extract probability predictions from any R model in a standardised format
+#'
 #' @param model Fitted model object (any class)
 #' @param X Feature matrix or data.frame for predictions
-#' @param y_train Optional training labels (for class names)
-#' @param verbose Print diagnostic information
-#' @return Probability matrix n_samples by n_classes with column names as class labels
-#' 
+#' @param y_train Optional training labels used to name output columns
+#' @param verbose Print diagnostic information (default: FALSE)
+#'
+#' @return Numeric matrix of shape n_samples x n_classes with column names
+#'   as class labels. Attributes \code{extraction_method} and
+#'   \code{model_class} record how predictions were obtained.
+#'
 #' @export
 extract_probabilities <- function(model, X, y_train = NULL, verbose = FALSE) {
   
-  # Helper: Convert X to appropriate format for prediction
-  prepare_X <- function(X, model) {
-    # Check if model expects formula interface (needs data.frame)
-    if (inherits(model, c("glm", "lm", "rpart", "nnet"))) {
-      if (is.matrix(X)) {
-        X <- as.data.frame(X)
-      }
-    }
-    return(X)
-  }
+  # Input validation
+  if (is.null(model))           stop("'model' must not be NULL")
+  if (NROW(X) == 0)             stop("'X' has no rows")
+  if (!is.null(y_train) && !is.factor(y_train) &&
+      !is.character(y_train) && !is.numeric(y_train))
+    stop("'y_train' must be a factor, character, or numeric vector")
   
-  # Helper: Get class labels from training data
-  get_class_labels <- function(y) {
-    if (is.factor(y)) {
-      return(levels(y))
-    } else if (is.character(y)) {
-      return(sort(unique(y)))
-    } else if (is.numeric(y)) {
-      return(c("0", "1"))
-    } else {
-      return(NULL)
-    }
-  }
-  
-  # Helper: Standardize to probability matrix
-  standardize_to_probs <- function(pred, y_train) {
-    # Case 1: Perfect probability matrix
-    if (is.matrix(pred) && all(pred >= 0) && all(pred <= 1)) {
-      row_sums <- rowSums(pred)
-      if (all(abs(row_sums - 1) < 1e-6)) {
-        if (verbose) message("   Perfect probability matrix")
-        if (is.null(colnames(pred)) && !is.null(y_train)) {
-          colnames(pred) <- get_class_labels(y_train)
-        }
-        return(pred)
-      }
-    }
-    
-    # Case 2: Numeric vector (binary probability)
-    if (is.numeric(pred) && !is.matrix(pred)) {
-      if (all(pred >= 0 & pred <= 1)) {
-        if (verbose) message("   Binary probability vector")
-        n_classes <- if (!is.null(y_train)) nlevels(y_train) else 2
-        prob_matrix <- matrix(0, nrow = length(pred), ncol = n_classes)
-        prob_matrix[, n_classes] <- pred
-        prob_matrix[, 1] <- 1 - pred
-        if (!is.null(y_train)) {
-          colnames(prob_matrix) <- get_class_labels(y_train)
-        } else {
-          colnames(prob_matrix) <- c("Class0", "Class1")
-        }
-        return(prob_matrix)
-      } else {
-        # Logits -> sigmoid
-        if (verbose) message("   Logit vector -> sigmoid")
-        probs <- 1 / (1 + exp(-pred))
-        return(standardize_to_probs(probs, y_train))
-      }
-    }
-    
-    # Case 3: Factor (hard classes) -> one-hot
-    if (is.factor(pred)) {
-      if (verbose) message("   Hard classes -> one-hot (less informative)")
-      classes <- levels(pred)
-      prob_matrix <- matrix(0, nrow = length(pred), ncol = length(classes))
-      for (i in seq_along(pred)) {
-        prob_matrix[i, which(classes == pred[i])] <- 1
-      }
-      colnames(prob_matrix) <- classes
-      return(prob_matrix)
-    }
-    
-    # Case 4: Matrix that needs softmax
-    if (is.matrix(pred)) {
-      row_sums <- rowSums(pred)
-      if (any(abs(row_sums - 1) > 1e-6)) {
-        if (all(pred >= 0)) {
-          if (verbose) message("   Raw scores -> softmax")
-          prob_matrix <- pred / row_sums
-        } else {
-          if (verbose) message("   Logit matrix -> softmax")
-          exp_pred <- exp(pred)
-          prob_matrix <- exp_pred / rowSums(exp_pred)
-        }
-        if (!is.null(y_train)) {
-          colnames(prob_matrix) <- get_class_labels(y_train)
-        }
-        return(prob_matrix)
-      }
-    }
-    
-    # Case 5: List with probabilities element
-    if (is.list(pred) && !is.null(pred$probabilities)) {
-      if (verbose) message("   List with 'probabilities' element")
-      return(standardize_to_probs(pred$probabilities, y_train))
-    }
-    
-    # Last resort: coerce and hope
-    if (verbose) message("   Unknown format, attempting coercion")
-    pred <- as.matrix(pred)
-    return(standardize_to_probs(pred, y_train))
-  }
-  
-  # Main extraction logic
+  model_class <- class(model)[1]
   if (verbose) message("Model class: ", paste(class(model), collapse = ", "))
   
-  # Prepare X in the right format
-  X_pred <- prepare_X(X, model)
+  # 1. Try registered extractor
+  extractor <- .extractors[[model_class]]
+  prediction <- if (!is.null(extractor)) {
+    if (verbose) message("  Trying registered extractor for '", model_class, "'")
+    extractor(model, X)
+  } else NULL
   
-  prediction <- NULL
-  method <- NULL
+  method <- if (!is.null(prediction))
+    paste0("registered::", model_class) else "unknown"
   
-  # Model-specific optimizations
-  model_class <- class(model)[1]
-  
-  # 1. randomForest
-  if (inherits(model, "randomForest") && model$type == "classification") {
-    prediction <- tryCatch({
-      predict(model, X, type = "prob")
-    }, error = function(e) NULL)
-    if (!is.null(prediction)) method <- "randomForest::predict(type='prob')"
-  }
-  
-  # 2. GLM - FIXED: Handle data frame requirement
-  if (is.null(prediction) && inherits(model, "glm")) {
-    if (family(model)$family == "binomial") {
-      prediction <- tryCatch({
-        # Ensure X is data.frame for GLM
-        X_df <- as.data.frame(X)
-        predict(model, newdata = X_df, type = "response")
-      }, error = function(e) NULL)
-      if (!is.null(prediction)) method <- "glm::predict(type='response')"
-    } else if (family(model)$family == "multinomial") {
-      prediction <- tryCatch({
-        X_df <- as.data.frame(X)
-        predict(model, newdata = X_df, type = "probs")
-      }, error = function(e) NULL)
-      if (!is.null(prediction)) method <- "glm::predict(type='probs')"
-    }
-  }
-  
-  # 3. SVM (e1071)
-  if (is.null(prediction) && inherits(model, "svm")) {
-    if (model$type == "C-classification") {
-      prediction <- tryCatch({
-        pred_obj <- predict(model, X, probability = TRUE)
-        attr(pred_obj, "probabilities")
-      }, error = function(e) NULL)
-      if (!is.null(prediction)) method <- "e1071::svm with probability=TRUE"
-    }
-  }
-  
-  # 4. nnet
-  if (is.null(prediction) && inherits(model, "nnet")) {
-    prediction <- tryCatch({
-      X_df <- as.data.frame(X)
-      predict(model, newdata = X_df, type = "raw")
-    }, error = function(e) NULL)
-    if (!is.null(prediction)) method <- "nnet::predict(type='raw')"
-  }
-  
-  # 5. rpart
-  if (is.null(prediction) && inherits(model, "rpart")) {
-    prediction <- tryCatch({
-      X_df <- as.data.frame(X)
-      predict(model, newdata = X_df, type = "prob")
-    }, error = function(e) NULL)
-    if (!is.null(prediction)) method <- "rpart::predict(type='prob')"
-  }
-  
-  # 6. xgboost
-  if (is.null(prediction) && inherits(model, "xgb.Booster")) {
-    prediction <- tryCatch({
-      # xgboost needs matrix
-      X_mat <- as.matrix(X)
-      pred <- predict(model, X_mat, type = "prob")
-      if (is.null(dim(pred))) {
-        pred <- cbind(1 - pred, pred)
-      }
-      pred
-    }, error = function(e) NULL)
-    if (!is.null(prediction)) method <- "xgboost::predict(type='prob')"
-  }
-  
-  # 7. glmnet
-  if (is.null(prediction) && inherits(model, "glmnet")) {
-    prediction <- tryCatch({
-      X_mat <- as.matrix(X)
-      pred <- predict(model, X_mat, type = "response")
-      if (is.matrix(pred) && ncol(pred) == 1) {
-        pred <- cbind(1 - pred, pred)
-      }
-      pred
-    }, error = function(e) NULL)
-    if (!is.null(prediction)) method <- "glmnet::predict(type='response')"
-  }
-  
-  # 8. ksvm (kernlab)
-  if (is.null(prediction) && inherits(model, "ksvm")) {
-    prediction <- tryCatch({
-      X_mat <- as.matrix(X)
-      predict(model, X_mat, type = "probabilities")
-    }, error = function(e) NULL)
-    if (!is.null(prediction)) method <- "kernlab::ksvm predict(type='probabilities')"
-  }
-  
-  # 9. Generic fallback methods (IMPROVED)
+  # 2. Fall back to generic cascade
   if (is.null(prediction)) {
-    if (verbose) message("  Using generic fallback...")
-    
-    # Try different prediction interfaces
-    # First, try with newdata (formula interface)
-    if (is.null(prediction)) {
-      prediction <- tryCatch({
-        X_df <- as.data.frame(X)
-        predict(model, newdata = X_df, type = "response")
-      }, error = function(e) NULL)
-      if (!is.null(prediction)) method <- "predict(newdata=..., type='response')"
-    }
-    
-    # Try with newx (matrix interface)
-    if (is.null(prediction)) {
-      prediction <- tryCatch({
-        X_mat <- as.matrix(X)
-        predict(model, newx = X_mat, type = "response")
-      }, error = function(e) NULL)
-      if (!is.null(prediction)) method <- "predict(newx=..., type='response')"
-    }
-    
-    # Try without newdata (assumes X is correct format)
-    if (is.null(prediction)) {
-      prediction <- tryCatch({
-        predict(model, X, type = "response")
-      }, error = function(e) NULL)
-      if (!is.null(prediction)) method <- "predict(X, type='response')"
-    }
-    
-    # Try type = "prob"
-    if (is.null(prediction)) {
-      prediction <- tryCatch({
-        X_df <- as.data.frame(X)
-        predict(model, newdata = X_df, type = "prob")
-      }, error = function(e) NULL)
-      if (!is.null(prediction)) method <- "predict(newdata=..., type='prob')"
-    }
-    
-    # Try type = "raw"
-    if (is.null(prediction)) {
-      prediction <- tryCatch({
-        X_df <- as.data.frame(X)
-        predict(model, newdata = X_df, type = "raw")
-      }, error = function(e) NULL)
-      if (!is.null(prediction)) method <- "predict(newdata=..., type='raw')"
-    }
-    
-    # Try probability = TRUE
-    if (is.null(prediction)) {
-      prediction <- tryCatch({
-        pred_obj <- predict(model, X, probability = TRUE)
-        if (is.matrix(attr(pred_obj, "probabilities"))) {
-          attr(pred_obj, "probabilities")
-        } else {
-          NULL
-        }
-      }, error = function(e) NULL)
-      if (!is.null(prediction)) method <- "predict(probability=TRUE)"
-    }
-    
-    # Last resort: direct prediction
-    if (is.null(prediction)) {
-      prediction <- tryCatch({
-        predict(model, X)
-      }, error = function(e) NULL)
-      if (!is.null(prediction)) method <- "direct prediction (fallback)"
+    if (verbose) message("  No registered extractor, trying fallback cascade...")
+    for (i in seq_along(.fallback_extractors)) {
+      prediction <- .fallback_extractors[[i]](model, X)
+      if (!is.null(prediction)) {
+        method <- paste0("fallback::", i)
+        if (verbose) message("  Fallback ", i, " succeeded")
+        break
+      }
     }
   }
   
-  if (is.null(prediction)) {
-    stop("Could not extract predictions from model of class: ", 
+  if (is.null(prediction))
+    stop("Could not extract predictions from model of class: ",
          paste(class(model), collapse = ", "))
-  }
   
   if (verbose) message("Extraction method: ", method)
   
-  # Standardize to probability matrix
-  result <- standardize_to_probs(prediction, y_train)
+  # Standardise to probability matrix
+  result <- .standardize_to_probs(prediction, y_train, verbose)
   
-  # Final validation
-  if (!is.matrix(result)) {
+  # Final checks
+  if (!is.matrix(result))
     result <- as.matrix(result)
-  }
   
-  # Clip to [0,1]
   result[result < 0] <- 0
   result[result > 1] <- 1
   
-  # Normalize row sums
   row_sums <- rowSums(result)
-  if (any(abs(row_sums - 1) > 1e-4)) {
-    if (verbose) message("  Normalizing row sums to 1")
+  if (any(abs(row_sums - 1) > 0.01))
+    warning("Row sums deviate from 1 by more than 0.01 before normalisation; check model output")
+  if (any(abs(row_sums - 1) > 1e-4))
     result <- result / row_sums
-  }
   
-  # Add metadata
   attr(result, "extraction_method") <- method
-  attr(result, "model_class") <- model_class
+  attr(result, "model_class")       <- model_class
   
   if (verbose) {
-    message("Final output: ", paste(dim(result), collapse = "x"), " matrix")
+    message("Output: ", paste(dim(result), collapse = "x"), " matrix")
     message("Classes: ", paste(colnames(result), collapse = ", "))
   }
   
-  return(result)
+  result
 }
