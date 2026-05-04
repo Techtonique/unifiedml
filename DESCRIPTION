@@ -30,8 +30,7 @@ Suggests:
     spelling,
     MASS,
     nnet,
-    caret,
-    xgboost
+    caret
 VignetteBuilder: knitr
 Encoding: UTF-8
 LazyData: true

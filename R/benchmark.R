@@ -78,7 +78,7 @@ benchmark <- function(models, X, y, cv = 5L, scoring = NULL, params = NULL, cl=N
       scoring = scoring,
       show_progress = FALSE,
       cl = cl,
-      fit_params = extra_args   # 🔥 THIS IS THE KEY FIX
+      fit_params = extra_args
     )
     
     results[[i]] <- list(avg_score = mean(scores), scores = scores)

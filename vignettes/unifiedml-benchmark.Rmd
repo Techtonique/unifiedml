@@ -22,7 +22,6 @@ y <- iris$Species
 models <- list(
   glm  = Model$new(caret::train),
   rf   = Model$new(randomForest::randomForest),
-  xgb  = Model$new(caret::train),
   svm  = Model$new(e1071::svm)   
 )
 
@@ -32,12 +31,6 @@ params <- list(
              trControl = trainControl(method = "none")),
   
   rf  = list(ntree = 150),
-  
-  xgb = list(method = "xgbTree",
-             tuneGrid = data.frame(nrounds = 150, max_depth = 3, eta = 0.3,
-                                   gamma = 0, colsample_bytree = 1,
-                                   min_child_weight = 1, subsample = 1),
-             trControl = trainControl(method = "none")),
   
   svm = list(kernel = "radial",   # <-- added
              cost = 1,
@@ -65,7 +58,6 @@ y <- mtcars$mpg
 models <- list(
   glm  = Model$new(caret::train),
   rf   = Model$new(randomForest::randomForest),
-  xgb  = Model$new(caret::train),
   svm  = Model$new(e1071::svm)
 )
 
@@ -75,14 +67,6 @@ params <- list(
              trControl = trainControl(method = "none")),
   
   rf  = list(ntree = 150),
-  
-  xgb = list(method = "xgbTree",
-             tuneGrid = data.frame(
-               nrounds = 150, max_depth = 3, eta = 0.3,
-               gamma = 0, colsample_bytree = 1,
-               min_child_weight = 1, subsample = 1
-             ),
-             trControl = trainControl(method = "none")),
   
   svm = list(type = "eps-regression",  # <-- important for regression
              kernel = "radial",
