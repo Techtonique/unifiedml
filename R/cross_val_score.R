@@ -78,7 +78,7 @@ cross_val_score <- function(model,
                             seed = 123,
                             fit_params = NULL, 
                             predict_params = NULL) {
-  X <- as.matrix(X)
+  #X <- as.matrix(X)
   n <- nrow(X)
   if (length(y) != n)
     stop("Must have: length(y) == nrow(X)")

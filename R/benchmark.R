@@ -70,21 +70,16 @@ benchmark <- function(models, X, y, cv = 5L, scoring = NULL, params = NULL, cl=N
       list()
     }
     
-    # Run cross-validation using your cross_val_score function
-    args <- c(
-      list(
-        model = mod,
-        X = X,
-        y = y,
-        cv = cv,
-        scoring = scoring,
-        show_progress = FALSE,
-        cl = cl
-      ),
-      extra_args
+    scores <- cross_val_score(
+      model = mod,
+      X = X,
+      y = y,
+      cv = cv,
+      scoring = scoring,
+      show_progress = FALSE,
+      cl = cl,
+      fit_params = extra_args   # 🔥 THIS IS THE KEY FIX
     )
-    
-    scores <- do.call(cross_val_score, args)
     
     results[[i]] <- list(avg_score = mean(scores), scores = scores)
     

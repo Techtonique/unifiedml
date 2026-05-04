@@ -15,7 +15,6 @@ For v0.3.0:
 - add caret example
 - add benchmarking function
 - fix parallel cross-validation
-- Shapley values for regression through kernel SHAP
 
 # 2026-04-09
 

@@ -2,7 +2,7 @@
 % Please edit documentation in R/probs_classif.R
 \name{extract_probabilities}
 \alias{extract_probabilities}
-\title{Extract probability predictions from any R model in a standardized format}
+\title{Extract probability predictions from any R model in a standardised format}
 \usage{
 extract_probabilities(model, X, y_train = NULL, verbose = FALSE)
 }
@@ -11,13 +11,15 @@ extract_probabilities(model, X, y_train = NULL, verbose = FALSE)
 
 \item{X}{Feature matrix or data.frame for predictions}
 
-\item{y_train}{Optional training labels (for class names)}
+\item{y_train}{Optional training labels used to name output columns}
 
-\item{verbose}{Print diagnostic information}
+\item{verbose}{Print diagnostic information (default: FALSE)}
 }
 \value{
-Probability matrix n_samples by n_classes with column names as class labels
+Numeric matrix of shape n_samples x n_classes with column names
+as class labels. Attributes \code{extraction_method} and
+\code{model_class} record how predictions were obtained.
 }
 \description{
-Extract probability predictions from any R model in a standardized format
+Extract probability predictions from any R model in a standardised format
 }

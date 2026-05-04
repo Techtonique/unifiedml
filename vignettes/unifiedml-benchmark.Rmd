@@ -9,7 +9,7 @@ vignette: >
 
 # Classification
 
-```{r fig.width=7, eval=FALSE}
+```{r fig.width=7, eval=TRUE}
 library(unifiedml)
 library(randomForest)
 library(e1071)
@@ -50,7 +50,7 @@ print(results)
 
 # Regression 
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 library(unifiedml)
 library(randomForest)
 library(e1071)
