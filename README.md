@@ -58,9 +58,6 @@ mod$fit(X, y, alpha = 0, lambda = 0.1)
 # Make predictions
 predictions <- mod$predict(X)
 
-# Get model summary with feature importance
-mod$summary()
-
 # Visualize partial dependence
 mod$plot(feature = 1)
 
@@ -85,9 +82,6 @@ mod$fit(X, y, ntree = 100)
 
 # Make predictions
 predictions <- mod$predict(X)
-
-# Get model summary
-mod$summary()
 
 # Cross-validation (automatically uses accuracy for classification)
 cv_scores <- cross_val_score(mod, X, y, cv = 5)
@@ -124,21 +118,11 @@ mod$print()
 
 The `cross_val_score()` function provides consistent k-fold cross-validation:
 
-```R
-# Automatic metric selection based on task
-scores <- cross_val_score(mod, X, y, cv = 5)
-
-# Specify custom metric
-scores <- cross_val_score(mod, X, y, cv = 10, scoring = "mae")
-
-# Available metrics:
-# - Regression: "rmse" (default), "mae"
-# - Classification: "accuracy" (default), "f1"
-```
+See [the vignettes](/vignettes).
 
 ### Model Interpretability
 
-The `summary()` method uses numerical derivatives to assess feature importance:
+The `summary()` (work in progress) method uses numerical derivatives to assess feature importance:
 
 ```R
 mod$summary()
@@ -153,15 +137,6 @@ mod$summary()
 # Sepal.Width    -0.234           0.038       -6.16    < 0.001  ***
 # ...
 ```
-
-## Supported Models
-
-`unifiedml` automatically detects the appropriate interface for:
-
-- **glmnet**: Ridge, Lasso, Elastic Net regression and classification
-- **randomForest**: Random forest for regression and classification
-- **e1071::svm**: Support Vector Machines
-- **Any model** with either formula (`y ~ .`) or matrix (`x, y`) interface
 
 ## Automatic Task Detection
 
@@ -181,6 +156,8 @@ mod$fit(X, y_class)  # → task = "classification"
 
 ### Partial Dependence Plots
 
+Work in progress. 
+
 ```R
 # Visualize how feature j affects predictions
 mod$plot(feature = 3, n_points = 100)
@@ -195,11 +172,7 @@ mod_copy <- mod$clone_model()
 
 ## Examples
 
-See the package vignette for comprehensive examples:
-
-```R
-vignette("introduction", package = "unifiedml")
-```
+See the package [vignettes](/vignettes) for comprehensive examples.
 
 ## Why unifiedml?
 
